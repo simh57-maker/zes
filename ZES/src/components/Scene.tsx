@@ -218,31 +218,44 @@ function pathToTroikaOutline(commands: any[], scale: number): string {
   return d.trim();
 }
 
-// 모듈 레벨 캐시 — URL → { fontData, threeFont }
-const fontCache = new Map<string, { fontData: any; threeFont: Font }>();
+// ─── Font cache ───────────────────────────────────────────────────────────────
+// 구조: url → { opentypeFont, upem, scale, glyphs(캐시), fontData, threeFont }
+// 글리프는 필요한 문자만 on-demand 추출 → 한글 11172자 사전 변환 제거
+
+interface FontEntry {
+  opentypeFont: any;
+  upem: number;
+  scale: number;
+  glyphs: Record<string, any>;
+  fontData: any;    // three-stdlib FontData shape (glyphs는 공유 참조)
+  threeFont: Font;
+}
+
+const fontCache = new Map<string, FontEntry>();
 const fontLoadingSet = new Set<string>();
 
-async function loadFont(url: string): Promise<{ fontData: any; threeFont: Font }> {
+function extractGlyph(entry: FontEntry, ch: string): boolean {
+  if (entry.glyphs[ch]) return true;
+  const g = entry.opentypeFont.charToGlyph(ch);
+  if (!g || g.index === 0) return false;
+  const ha = Math.round((g.advanceWidth ?? 0) * entry.scale);
+  const outline = pathToTroikaOutline(g.getPath(0, 0, entry.upem).commands, entry.scale);
+  entry.glyphs[ch] = { _cachedOutline: outline.split(" "), ha, o: outline };
+  return true;
+}
+
+async function loadFont(url: string): Promise<FontEntry> {
   const { parse } = await import("opentype.js");
   const buf = await fetch(url).then((r) => r.arrayBuffer());
-  const font = parse(buf);
-  const upem = font.unitsPerEm || 1000;
+  const opentypeFont = parse(buf);
+  const upem = opentypeFont.unitsPerEm || 1000;
   const scale = 1000 / upem;
   const glyphs: Record<string, any> = {};
 
-  // ASCII 가시 문자
+  // ASCII 가시 문자만 사전 추출 (95자 — 가볍고 빠름)
   for (let cp = 32; cp <= 126; cp++) {
     const ch = String.fromCodePoint(cp);
-    const g = font.charToGlyph(ch);
-    if (!g || g.index === 0) continue;
-    const ha = Math.round((g.advanceWidth ?? 0) * scale);
-    const outline = pathToTroikaOutline(g.getPath(0, 0, upem).commands, scale);
-    glyphs[ch] = { _cachedOutline: outline.split(" "), ha, o: outline };
-  }
-  // 한글 가나다 범위
-  for (let cp = 44032; cp <= 55203; cp++) {
-    const ch = String.fromCodePoint(cp);
-    const g = font.charToGlyph(ch);
+    const g = opentypeFont.charToGlyph(ch);
     if (!g || g.index === 0) continue;
     const ha = Math.round((g.advanceWidth ?? 0) * scale);
     const outline = pathToTroikaOutline(g.getPath(0, 0, upem).commands, scale);
@@ -250,23 +263,40 @@ async function loadFont(url: string): Promise<{ fontData: any; threeFont: Font }
   }
 
   const fontData = {
-    familyName: font.names?.fontFamily?.en ?? "Custom",
+    familyName: opentypeFont.names?.fontFamily?.en ?? "Custom",
     resolution: 1000,
     boundingBox: {
-      yMin: Math.round((font.descender ?? -200) * scale),
-      yMax: Math.round((font.ascender ?? 800) * scale),
+      yMin: Math.round((opentypeFont.descender ?? -200) * scale),
+      yMax: Math.round((opentypeFont.ascender ?? 800) * scale),
     },
     underlineThickness: 50,
-    glyphs,
+    glyphs, // 공유 참조 — extractGlyph가 여기에 직접 추가
   };
 
-  // three-stdlib Font 인스턴스 생성 — TextGeometry에 직접 전달 가능
   const threeFont = new Font(fontData);
-  return { fontData, threeFont };
+  return { opentypeFont, upem, scale, glyphs, fontData, threeFont };
 }
 
-// 폰트 로딩 훅 — 완료되면 { threeFont } 반환
-function useFontLoad(url: string | null): Font | null {
+// 텍스트에 필요한 글리프를 on-demand로 확보하고 Font 인스턴스를 갱신
+// 새 문자가 추가될 때만 Font를 재생성해 TextGeometry 재빌드 유발
+function ensureGlyphs(entry: FontEntry, text: string): Font {
+  let added = false;
+  for (const ch of text) {
+    if (ch === " " || ch === "\n") continue;
+    if (!entry.glyphs[ch]) {
+      const ok = extractGlyph(entry, ch);
+      if (ok) added = true;
+    }
+  }
+  if (added) {
+    // fontData.glyphs는 공유 참조이므로 이미 최신 — Font만 재생성
+    entry.threeFont = new Font(entry.fontData);
+  }
+  return entry.threeFont;
+}
+
+// 폰트 로딩 훅
+function useFontLoad(url: string | null) {
   const [loadedUrl, setLoadedUrl] = useState<string | null>(null);
 
   useEffect(() => {
@@ -275,21 +305,28 @@ function useFontLoad(url: string | null): Font | null {
     if (fontLoadingSet.has(url)) return;
     fontLoadingSet.add(url);
     loadFont(url)
-      .then((result) => {
-        fontCache.set(url, result);
+      .then((entry) => {
+        fontCache.set(url, entry);
         setLoadedUrl(url);
       })
       .catch(() => { fontLoadingSet.delete(url); });
   }, [url]);
 
   if (!url || loadedUrl !== url) return null;
-  return fontCache.get(url)?.threeFont ?? null;
+  return fontCache.get(url) ?? null;
 }
 
-function Text3DMesh({ threeFont }: { threeFont: Font }) {
+function Text3DMesh({ entry }: { entry: FontEntry }) {
   const text = useEditorStore((s) => s.text);
   const groupRef = useRef<THREE.Group>(null);
   const meshRef = useRef<THREE.Mesh>(null);
+
+  // 현재 content에 필요한 글리프를 확보하고 최신 Font 인스턴스를 얻음
+  const threeFont = useMemo(
+    () => ensureGlyphs(entry, text.content),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [entry, text.content]
+  );
 
   const geometry = useMemo(() => {
     if (!text.content.trim()) return null;
@@ -305,7 +342,6 @@ function Text3DMesh({ threeFont }: { threeFont: Font }) {
         letterSpacing: text.letterSpacing,
       });
       geo.computeBoundingBox();
-      // 수평 가운데 정렬
       const offset = new THREE.Vector3();
       geo.boundingBox!.getCenter(offset);
       geo.translate(-offset.x, -offset.y, -offset.z);
@@ -340,14 +376,11 @@ function Text3DMesh({ threeFont }: { threeFont: Font }) {
 
 function FontLoader() {
   const text = useEditorStore((s) => s.text);
-  const threeFont = useFontLoad(text.fontVariant || null);
+  const entry = useFontLoad(text.fontVariant || null);
 
   if (!text.visible || !text.content.trim()) return null;
-  if (!threeFont) {
-    // 로딩 중 — 작은 스피너 대신 null 반환 (Canvas 안이라 HTML 불가)
-    return null;
-  }
-  return <Text3DMesh threeFont={threeFont} />;
+  if (!entry) return null; // 폰트 로딩 중
+  return <Text3DMesh entry={entry} />;
 }
 
 // ─── Per-tab lights / postprocessing (props 기반) ─────────────────────────────
