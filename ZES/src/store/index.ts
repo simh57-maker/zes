@@ -201,6 +201,10 @@ export interface EditorStore {
   textPostProcessing: PostProcessingState;
   setTextPostProcessing: (v: Partial<PostProcessingState>) => void;
 
+  // ── Font 로딩 상태 (Canvas 밖에서 관리) ──
+  fontReadyUrl: string | null;
+  setFontReadyUrl: (v: string | null) => void;
+
   // ── Export (공통) ──
   isExporting: boolean;
   setIsExporting: (v: boolean) => void;
@@ -248,6 +252,10 @@ export const useEditorStore = create<EditorStore>()(
     textPostProcessing: defaultTextPostProcessing,
     setTextPostProcessing: (v) =>
       set((s) => ({ textPostProcessing: { ...s.textPostProcessing, ...v } })),
+
+    // Font
+    fontReadyUrl: null,
+    setFontReadyUrl: (v) => set({ fontReadyUrl: v }),
 
     // Export
     isExporting: false,

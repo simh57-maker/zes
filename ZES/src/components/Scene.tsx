@@ -295,53 +295,52 @@ function ensureGlyphs(entry: FontEntry, text: string): Font {
   return entry.threeFont;
 }
 
-// 폰트 로딩 훅 — url이 바뀌면 새 폰트를 로드, 로드 완료 시 리렌더 유발
-function useFontLoad(url: string | null) {
-  const [, forceUpdate] = useState(0);
+// FontLoader는 Canvas 밖(Scene)에서 호출 — display:none 영향 없음
+// 로드 완료 시 store.fontReadyUrl 업데이트 → Text3DMesh 자동 리렌더
+export function FontPreloader() {
+  const fontVariant = useEditorStore((s) => s.text.fontVariant);
+  const setFontReadyUrl = useEditorStore((s) => s.setFontReadyUrl);
 
   useEffect(() => {
-    if (!url) return;
-    // 이미 캐시에 있으면 즉시 사용 가능
-    if (fontCache.has(url)) return;
-    // 이미 로딩 중이면 완료 콜백 추가
-    if (fontLoadingSet.has(url)) {
-      // 로딩 완료를 기다렸다가 리렌더
-      const interval = setInterval(() => {
-        if (fontCache.has(url)) {
-          clearInterval(interval);
-          forceUpdate((n) => n + 1);
-        }
-      }, 100);
-      return () => clearInterval(interval);
+    if (!fontVariant) return;
+    if (fontCache.has(fontVariant)) {
+      setFontReadyUrl(fontVariant);
+      return;
     }
-    fontLoadingSet.add(url);
-    loadFont(url)
+    if (fontLoadingSet.has(fontVariant)) return;
+    fontLoadingSet.add(fontVariant);
+    loadFont(fontVariant)
       .then((entry) => {
-        fontCache.set(url, entry);
-        fontLoadingSet.delete(url);
-        forceUpdate((n) => n + 1);
+        fontCache.set(fontVariant, entry);
+        fontLoadingSet.delete(fontVariant);
+        setFontReadyUrl(fontVariant); // ← store 업데이트 → 전체 구독자 리렌더
       })
-      .catch(() => { fontLoadingSet.delete(url); });
-  }, [url]);
+      .catch(() => { fontLoadingSet.delete(fontVariant); });
+  }, [fontVariant, setFontReadyUrl]);
 
-  if (!url) return null;
-  return fontCache.get(url) ?? null;
+  return null; // DOM 렌더 없음
 }
 
-function Text3DMesh({ entry }: { entry: FontEntry }) {
+// Canvas 내부 — store.fontReadyUrl을 구독해서 로드 완료를 감지
+function Text3DMesh() {
   const text = useEditorStore((s) => s.text);
-  const groupRef = useRef<THREE.Group>(null);
+  const fontReadyUrl = useEditorStore((s) => s.fontReadyUrl);
   const meshRef = useRef<THREE.Mesh>(null);
 
-  // 현재 content에 필요한 글리프를 확보하고 최신 Font 인스턴스를 얻음
-  const threeFont = useMemo(
-    () => ensureGlyphs(entry, text.content),
+  // fontReadyUrl이 현재 fontVariant와 일치할 때만 entry 사용
+  const entry = (fontReadyUrl === text.fontVariant)
+    ? fontCache.get(text.fontVariant) ?? null
+    : null;
+
+  // 필요한 글리프 확보 + Font 최신화
+  const threeFont = useMemo(() => {
+    if (!entry) return null;
+    return ensureGlyphs(entry, text.content);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [entry, text.content]
-  );
+  }, [entry, text.content]);
 
   const geometry = useMemo(() => {
-    if (!text.content.trim()) return null;
+    if (!threeFont || !text.content.trim()) return null;
     try {
       const geo = new TextGeometry(text.content, {
         font: threeFont,
@@ -377,23 +376,17 @@ function Text3DMesh({ entry }: { entry: FontEntry }) {
     if (mat?.emissive) mat.emissiveIntensity = 0.4 + 0.6 * Math.abs(Math.sin(1.8 * clock.getElapsedTime()));
   });
 
-  if (!geometry) return null;
+  if (!geometry || !text.visible) return null;
 
   return (
-    <group ref={groupRef} position={[0, text.positionY, 0]}>
+    <group position={[0, text.positionY, 0]}>
       <mesh ref={meshRef} geometry={geometry} material={material} castShadow receiveShadow />
     </group>
   );
 }
 
 function FontLoader() {
-  const fontVariant = useEditorStore((s) => s.text.fontVariant);
-  const visible = useEditorStore((s) => s.text.visible);
-  const content = useEditorStore((s) => s.text.content);
-  const entry = useFontLoad(fontVariant || null);
-
-  if (!visible || !content.trim() || !entry) return null;
-  return <Text3DMesh entry={entry} />;
+  return <Text3DMesh />;
 }
 
 // ─── Per-tab lights / postprocessing (props 기반) ─────────────────────────────
@@ -551,6 +544,9 @@ export default function Scene({ exportRef }: SceneProps) {
 
   return (
     <div className="absolute inset-0 z-10" style={{ pointerEvents: "auto" }}>
+      {/* Canvas 밖에서 폰트 로딩 — display:none 영향 없이 항상 실행 */}
+      <FontPreloader />
+
       {/* Assets Canvas */}
       <div
         className="absolute inset-0"
