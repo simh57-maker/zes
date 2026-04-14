@@ -295,24 +295,36 @@ function ensureGlyphs(entry: FontEntry, text: string): Font {
   return entry.threeFont;
 }
 
-// 폰트 로딩 훅
+// 폰트 로딩 훅 — url이 바뀌면 새 폰트를 로드, 로드 완료 시 리렌더 유발
 function useFontLoad(url: string | null) {
-  const [loadedUrl, setLoadedUrl] = useState<string | null>(null);
+  const [, forceUpdate] = useState(0);
 
   useEffect(() => {
-    if (!url) { setLoadedUrl(null); return; }
-    if (fontCache.has(url)) { setLoadedUrl(url); return; }
-    if (fontLoadingSet.has(url)) return;
+    if (!url) return;
+    // 이미 캐시에 있으면 즉시 사용 가능
+    if (fontCache.has(url)) return;
+    // 이미 로딩 중이면 완료 콜백 추가
+    if (fontLoadingSet.has(url)) {
+      // 로딩 완료를 기다렸다가 리렌더
+      const interval = setInterval(() => {
+        if (fontCache.has(url)) {
+          clearInterval(interval);
+          forceUpdate((n) => n + 1);
+        }
+      }, 100);
+      return () => clearInterval(interval);
+    }
     fontLoadingSet.add(url);
     loadFont(url)
       .then((entry) => {
         fontCache.set(url, entry);
-        setLoadedUrl(url);
+        fontLoadingSet.delete(url);
+        forceUpdate((n) => n + 1);
       })
       .catch(() => { fontLoadingSet.delete(url); });
   }, [url]);
 
-  if (!url || loadedUrl !== url) return null;
+  if (!url) return null;
   return fontCache.get(url) ?? null;
 }
 
@@ -375,11 +387,12 @@ function Text3DMesh({ entry }: { entry: FontEntry }) {
 }
 
 function FontLoader() {
-  const text = useEditorStore((s) => s.text);
-  const entry = useFontLoad(text.fontVariant || null);
+  const fontVariant = useEditorStore((s) => s.text.fontVariant);
+  const visible = useEditorStore((s) => s.text.visible);
+  const content = useEditorStore((s) => s.text.content);
+  const entry = useFontLoad(fontVariant || null);
 
-  if (!text.visible || !text.content.trim()) return null;
-  if (!entry) return null; // 폰트 로딩 중
+  if (!visible || !content.trim() || !entry) return null;
   return <Text3DMesh entry={entry} />;
 }
 
