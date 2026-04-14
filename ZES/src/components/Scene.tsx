@@ -32,7 +32,13 @@ import { BlendFunction, ToneMappingMode } from "postprocessing";
 import * as THREE from "three";
 import { SVGLoader } from "three/examples/jsm/loaders/SVGLoader.js";
 import { mergeGeometries } from "three/examples/jsm/utils/BufferGeometryUtils.js";
-import { useEditorStore } from "@/store";
+import {
+  useEditorStore,
+  useActiveLights,
+  useActivePostProcessing,
+  type LightsState,
+  type PostProcessingState,
+} from "@/store";
 import type { ExportRef } from "./TopBar";
 
 // ─── SVG Extruder ─────────────────────────────────────────────────────────────
@@ -365,7 +371,8 @@ function TextScene() {
 // ─── Lights ───────────────────────────────────────────────────────────────────
 
 function SceneLights() {
-  const lights = useEditorStore((s) => s.lights);
+  // 현재 활성 탭의 조명 상태를 읽음
+  const lights = useActiveLights();
   return (
     <>
       <ambientLight intensity={lights.ambientIntensity} color={lights.ambientColor} />
@@ -388,7 +395,8 @@ function SceneLights() {
 // ─── Post Processing ──────────────────────────────────────────────────────────
 
 function ScenePostProcessing() {
-  const pp = useEditorStore((s) => s.postProcessing);
+  // 현재 활성 탭의 후처리 상태를 읽음
+  const pp = useActivePostProcessing();
   if (
     !pp.bloomEnabled &&
     !pp.ssaoEnabled &&
@@ -433,6 +441,18 @@ function ScenePostProcessing() {
   );
 }
 
+// ─── Tab-specific objects ─────────────────────────────────────────────────────
+
+// Assets 탭: SVG만 표시
+function AssetsObjects() {
+  return <SVGScene />;
+}
+
+// Text 탭: 3D Text만 표시
+function TextObjects() {
+  return <TextScene />;
+}
+
 // ─── Export helper (inside canvas) ───────────────────────────────────────────
 
 const ExportHelper = forwardRef<ExportRef>(function ExportHelper(_, ref) {
@@ -467,6 +487,7 @@ interface SceneProps {
 
 const Scene = forwardRef<ExportRef, SceneProps>(function Scene({ exportRef }) {
   const isExporting = useEditorStore((s) => s.isExporting);
+  const activePanel = useEditorStore((s) => s.activePanel);
 
   return (
     <div className="absolute inset-0 z-10">
@@ -486,9 +507,11 @@ const Scene = forwardRef<ExportRef, SceneProps>(function Scene({ exportRef }) {
           >
             <PerspectiveCamera makeDefault fov={45} position={[0, 3, 8]} near={0.1} far={500} />
             <Environment preset="studio" background={false} />
+            {/* 탭별 독립 조명 */}
             <SceneLights />
-            <SVGScene />
-            <TextScene />
+            {/* 탭별 독립 오브젝트 */}
+            {activePanel === "assets" ? <AssetsObjects /> : <TextObjects />}
+            {/* 탭별 독립 후처리 */}
             <ScenePostProcessing />
             <OrbitControls
               makeDefault

@@ -5,14 +5,15 @@ import dynamic from "next/dynamic";
 import LeftPanel from "@/components/LeftPanel";
 import RightPanel from "@/components/RightPanel";
 import TopBar from "@/components/TopBar";
-import { useEditorStore } from "@/store";
+import { useEditorStore, useActiveBackground } from "@/store";
 import type { ExportRef } from "@/components/TopBar";
 
 // Scene은 SSR 불가 (WebGL)
 const Scene = dynamic(() => import("@/components/Scene"), { ssr: false });
 
+// 현재 탭의 배경을 렌더 — 탭 전환 시 부드럽게 전환
 function Background() {
-  const bg = useEditorStore((s) => s.background);
+  const bg = useActiveBackground();
   let style: React.CSSProperties = {};
   if (bg.type === "solid") {
     style = { backgroundColor: bg.solidColor };
@@ -31,7 +32,7 @@ function Background() {
   }
 
   return (
-    <div className="absolute inset-0 z-0 transition-all duration-300" style={style} />
+    <div className="absolute inset-0 z-0 transition-all duration-500" style={style} />
   );
 }
 

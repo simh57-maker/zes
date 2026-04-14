@@ -2,7 +2,7 @@
 
 import { useCallback } from "react";
 import { Layers, Type, Upload, FileText, X, RotateCcw } from "lucide-react";
-import { useEditorStore } from "@/store";
+import { useEditorStore, useActiveBackground, useSetActiveBackground } from "@/store";
 import * as Slider from "@radix-ui/react-slider";
 import * as Switch from "@radix-ui/react-switch";
 
@@ -342,8 +342,8 @@ function TextPanel() {
 // ─── Background panel ─────────────────────────────────────────────────────────
 
 function BackgroundPanel() {
-  const bg = useEditorStore((s) => s.background);
-  const setBg = useEditorStore((s) => s.setBackground);
+  const bg = useActiveBackground();
+  const setBg = useSetActiveBackground();
 
   const handleImageUpload = useCallback(
     (e: React.ChangeEvent<HTMLInputElement>) => {

@@ -4,7 +4,13 @@ import { Sun, Sparkles, ChevronRight } from "lucide-react";
 import * as Slider from "@radix-ui/react-slider";
 import * as Switch from "@radix-ui/react-switch";
 import * as Collapsible from "@radix-ui/react-collapsible";
-import { useEditorStore } from "@/store";
+import {
+  useEditorStore,
+  useActiveLights,
+  useSetActiveLights,
+  useActivePostProcessing,
+  useSetActivePostProcessing,
+} from "@/store";
 
 // ─── Shared primitives ────────────────────────────────────────────────────────
 
@@ -175,8 +181,8 @@ function CollapsibleSection({
 // ─── Lighting section ─────────────────────────────────────────────────────────
 
 function LightingSection() {
-  const lights = useEditorStore((s) => s.lights);
-  const setLights = useEditorStore((s) => s.setLights);
+  const lights = useActiveLights();
+  const setLights = useSetActiveLights();
 
   return (
     <>
@@ -289,8 +295,8 @@ function LightingSection() {
 // ─── Post Processing section ──────────────────────────────────────────────────
 
 function PostProcessingSection() {
-  const pp = useEditorStore((s) => s.postProcessing);
-  const setPP = useEditorStore((s) => s.setPostProcessing);
+  const pp = useActivePostProcessing();
+  const setPP = useSetActivePostProcessing();
 
   return (
     <>
