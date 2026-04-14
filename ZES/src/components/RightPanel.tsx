@@ -15,12 +15,12 @@ import {
 // ─── Shared primitives ────────────────────────────────────────────────────────
 
 function Divider() {
-  return <div className="mx-3 border-t border-white/[0.06]" />;
+  return <div className="mx-4 my-1 border-t border-white/[0.06]" />;
 }
 
 function SectionLabel({ label }: { label: string }) {
   return (
-    <div className="px-3 pt-3 pb-1">
+    <div className="px-4 pt-4 pb-2">
       <span className="text-[10px] font-semibold text-slate-500 uppercase tracking-widest">
         {label}
       </span>
@@ -31,27 +31,14 @@ function SectionLabel({ label }: { label: string }) {
 function RowLabel({
   icon,
   label,
-  right,
-  onClick,
-  chevron,
 }: {
   icon: React.ReactNode;
   label: string;
-  right?: React.ReactNode;
-  onClick?: () => void;
-  chevron?: boolean;
 }) {
   return (
-    <div
-      onClick={onClick}
-      className={`flex items-center gap-2.5 px-3 py-2.5 rounded-lg transition-colors ${
-        onClick ? "cursor-pointer hover:bg-white/[0.05]" : ""
-      }`}
-    >
+    <div className="flex items-center gap-3 px-4 py-3.5">
       <span className="flex-shrink-0 text-slate-400">{icon}</span>
-      <span className="flex-1 text-[12px] text-slate-300">{label}</span>
-      {right && <span className="flex-shrink-0">{right}</span>}
-      {chevron && <ChevronRight size={12} className="text-slate-600 flex-shrink-0" />}
+      <span className="flex-1 text-[13px] font-semibold text-slate-200">{label}</span>
     </div>
   );
 }
@@ -74,12 +61,11 @@ function SliderRow({
   unit?: string;
 }) {
   return (
-    <div className="px-3 pb-2 space-y-1.5">
-      <div className="flex justify-between">
-        <span className="text-[11px] text-slate-400">{label}</span>
-        <span className="text-[11px] text-slate-500 font-mono tabular-nums">
-          {value.toFixed(step < 0.01 ? 3 : 2)}
-          {unit}
+    <div className="px-4 pb-3 space-y-2">
+      <div className="flex justify-between items-center">
+        <span className="text-[12px] text-slate-400">{label}</span>
+        <span className="text-[11px] text-slate-500 font-mono tabular-nums bg-white/[0.04] px-1.5 py-0.5 rounded-md">
+          {value.toFixed(step < 0.01 ? 3 : 2)}{unit}
         </span>
       </div>
       <Slider.Root
@@ -88,12 +74,12 @@ function SliderRow({
         step={step}
         value={[value]}
         onValueChange={(v) => onChange(v[0])}
-        className="relative flex items-center w-full h-4"
+        className="relative flex items-center w-full h-5"
       >
         <Slider.Track className="relative grow rounded-full h-[3px] bg-white/[0.08]">
           <Slider.Range className="absolute rounded-full h-full bg-blue-500" />
         </Slider.Track>
-        <Slider.Thumb className="block w-3 h-3 bg-white rounded-full shadow-md focus:outline-none" />
+        <Slider.Thumb className="block w-3.5 h-3.5 bg-white rounded-full shadow-md focus:outline-none focus:ring-2 focus:ring-blue-500/50 cursor-grab active:cursor-grabbing" />
       </Slider.Root>
     </div>
   );
@@ -109,17 +95,17 @@ function ColorRow({
   onChange: (v: string) => void;
 }) {
   return (
-    <div className="px-3 pb-2">
-      <div className="flex items-center gap-2.5 p-2 bg-white/[0.03] rounded-xl border border-white/[0.06]">
+    <div className="px-4 pb-3">
+      <div className="flex items-center gap-3 p-3 bg-white/[0.03] rounded-xl border border-white/[0.06]">
         <input
           type="color"
           value={value}
           onChange={(e) => onChange(e.target.value)}
-          className="w-7 h-7 rounded-lg cursor-pointer bg-transparent border border-white/[0.1] flex-shrink-0"
+          className="w-8 h-8 rounded-lg cursor-pointer bg-transparent border border-white/[0.1] flex-shrink-0"
           style={{ padding: "2px" }}
         />
-        <span className="text-[10px] text-slate-500 flex-1">{label}</span>
-        <span className="text-[10px] text-slate-600 font-mono">{value.toUpperCase()}</span>
+        <span className="text-[11px] text-slate-400 flex-1">{label}</span>
+        <span className="text-[10px] text-slate-500 font-mono">{value.toUpperCase()}</span>
       </div>
     </div>
   );
@@ -140,18 +126,18 @@ function ToggleSection({
 }) {
   return (
     <>
-      <div className="flex items-center gap-2.5 px-3 py-2">
+      <div className="flex items-center gap-3 px-4 py-3">
         <span className="flex-1 text-[12px] text-slate-300">{label}</span>
         <Switch.Root
           id={id}
           checked={checked}
           onCheckedChange={onCheckedChange}
-          className="w-8 h-4 rounded-full bg-white/10 data-[state=checked]:bg-blue-600 transition-colors relative"
+          className="w-9 h-5 rounded-full bg-white/10 data-[state=checked]:bg-blue-600 transition-colors relative flex-shrink-0"
         >
-          <Switch.Thumb className="block w-3 h-3 bg-white rounded-full shadow-sm transition-transform translate-x-0.5 data-[state=checked]:translate-x-4" />
+          <Switch.Thumb className="block w-4 h-4 bg-white rounded-full shadow-sm transition-transform translate-x-0.5 data-[state=checked]:translate-x-4" />
         </Switch.Root>
       </div>
-      {checked && children}
+      {checked && <div className="pb-1">{children}</div>}
     </>
   );
 }
@@ -168,7 +154,7 @@ function CollapsibleSection({
   return (
     <Collapsible.Root defaultOpen={defaultOpen}>
       <Collapsible.Trigger asChild>
-        <button className="w-full flex items-center gap-2 px-3 py-1.5 text-[10px] font-semibold text-slate-500 uppercase tracking-widest hover:text-slate-400 transition-colors">
+        <button className="w-full flex items-center gap-2 px-4 py-2.5 text-[10px] font-semibold text-slate-500 uppercase tracking-widest hover:text-slate-400 transition-colors">
           <ChevronRight size={10} className="transition-transform [[data-state=open]_&]:rotate-90" />
           {title}
         </button>
@@ -186,7 +172,7 @@ function LightingSection() {
 
   return (
     <>
-      <RowLabel icon={<Sun size={13} />} label="Lighting" chevron />
+      <RowLabel icon={<Sun size={14} />} label="Lighting" />
       <Divider />
 
       <CollapsibleSection title="Ambient">
@@ -221,30 +207,9 @@ function LightingSection() {
           value={lights.directionalColor}
           onChange={(v) => setLights({ directionalColor: v })}
         />
-        <SliderRow
-          label="X"
-          value={lights.directionalX}
-          min={-20}
-          max={20}
-          step={0.1}
-          onChange={(v) => setLights({ directionalX: v })}
-        />
-        <SliderRow
-          label="Y"
-          value={lights.directionalY}
-          min={-20}
-          max={20}
-          step={0.1}
-          onChange={(v) => setLights({ directionalY: v })}
-        />
-        <SliderRow
-          label="Z"
-          value={lights.directionalZ}
-          min={-20}
-          max={20}
-          step={0.1}
-          onChange={(v) => setLights({ directionalZ: v })}
-        />
+        <SliderRow label="X" value={lights.directionalX} min={-20} max={20} step={0.1} onChange={(v) => setLights({ directionalX: v })} />
+        <SliderRow label="Y" value={lights.directionalY} min={-20} max={20} step={0.1} onChange={(v) => setLights({ directionalY: v })} />
+        <SliderRow label="Z" value={lights.directionalZ} min={-20} max={20} step={0.1} onChange={(v) => setLights({ directionalZ: v })} />
       </CollapsibleSection>
 
       <Divider />
@@ -263,30 +228,9 @@ function LightingSection() {
           value={lights.pointColor}
           onChange={(v) => setLights({ pointColor: v })}
         />
-        <SliderRow
-          label="X"
-          value={lights.pointX}
-          min={-20}
-          max={20}
-          step={0.1}
-          onChange={(v) => setLights({ pointX: v })}
-        />
-        <SliderRow
-          label="Y"
-          value={lights.pointY}
-          min={-20}
-          max={20}
-          step={0.1}
-          onChange={(v) => setLights({ pointY: v })}
-        />
-        <SliderRow
-          label="Z"
-          value={lights.pointZ}
-          min={-20}
-          max={20}
-          step={0.1}
-          onChange={(v) => setLights({ pointZ: v })}
-        />
+        <SliderRow label="X" value={lights.pointX} min={-20} max={20} step={0.1} onChange={(v) => setLights({ pointX: v })} />
+        <SliderRow label="Y" value={lights.pointY} min={-20} max={20} step={0.1} onChange={(v) => setLights({ pointY: v })} />
+        <SliderRow label="Z" value={lights.pointZ} min={-20} max={20} step={0.1} onChange={(v) => setLights({ pointZ: v })} />
       </CollapsibleSection>
     </>
   );
@@ -300,7 +244,7 @@ function PostProcessingSection() {
 
   return (
     <>
-      <RowLabel icon={<Sparkles size={13} />} label="Post Processing" chevron />
+      <RowLabel icon={<Sparkles size={14} />} label="Post Processing" />
       <Divider />
 
       <ToggleSection
@@ -309,30 +253,9 @@ function PostProcessingSection() {
         checked={pp.bloomEnabled}
         onCheckedChange={(v) => setPP({ bloomEnabled: v })}
       >
-        <SliderRow
-          label="Intensity"
-          value={pp.bloomIntensity}
-          min={0}
-          max={3}
-          step={0.01}
-          onChange={(v) => setPP({ bloomIntensity: v })}
-        />
-        <SliderRow
-          label="Threshold"
-          value={pp.bloomThreshold}
-          min={0}
-          max={1}
-          step={0.01}
-          onChange={(v) => setPP({ bloomThreshold: v })}
-        />
-        <SliderRow
-          label="Smoothing"
-          value={pp.bloomSmoothing}
-          min={0}
-          max={1}
-          step={0.01}
-          onChange={(v) => setPP({ bloomSmoothing: v })}
-        />
+        <SliderRow label="Intensity" value={pp.bloomIntensity} min={0} max={3} step={0.01} onChange={(v) => setPP({ bloomIntensity: v })} />
+        <SliderRow label="Threshold" value={pp.bloomThreshold} min={0} max={1} step={0.01} onChange={(v) => setPP({ bloomThreshold: v })} />
+        <SliderRow label="Smoothing" value={pp.bloomSmoothing} min={0} max={1} step={0.01} onChange={(v) => setPP({ bloomSmoothing: v })} />
       </ToggleSection>
 
       <Divider />
@@ -343,22 +266,8 @@ function PostProcessingSection() {
         checked={pp.ssaoEnabled}
         onCheckedChange={(v) => setPP({ ssaoEnabled: v })}
       >
-        <SliderRow
-          label="Intensity"
-          value={pp.ssaoIntensity}
-          min={0}
-          max={100}
-          step={1}
-          onChange={(v) => setPP({ ssaoIntensity: v })}
-        />
-        <SliderRow
-          label="Radius"
-          value={pp.ssaoRadius}
-          min={0.1}
-          max={20}
-          step={0.1}
-          onChange={(v) => setPP({ ssaoRadius: v })}
-        />
+        <SliderRow label="Intensity" value={pp.ssaoIntensity} min={0} max={100} step={1} onChange={(v) => setPP({ ssaoIntensity: v })} />
+        <SliderRow label="Radius" value={pp.ssaoRadius} min={0.1} max={20} step={0.1} onChange={(v) => setPP({ ssaoRadius: v })} />
       </ToggleSection>
 
       <Divider />
@@ -369,22 +278,8 @@ function PostProcessingSection() {
         checked={pp.vignetteEnabled}
         onCheckedChange={(v) => setPP({ vignetteEnabled: v })}
       >
-        <SliderRow
-          label="Offset"
-          value={pp.vignetteOffset}
-          min={0}
-          max={1}
-          step={0.01}
-          onChange={(v) => setPP({ vignetteOffset: v })}
-        />
-        <SliderRow
-          label="Darkness"
-          value={pp.vignetteDarkness}
-          min={0}
-          max={1}
-          step={0.01}
-          onChange={(v) => setPP({ vignetteDarkness: v })}
-        />
+        <SliderRow label="Offset" value={pp.vignetteOffset} min={0} max={1} step={0.01} onChange={(v) => setPP({ vignetteOffset: v })} />
+        <SliderRow label="Darkness" value={pp.vignetteDarkness} min={0} max={1} step={0.01} onChange={(v) => setPP({ vignetteDarkness: v })} />
       </ToggleSection>
 
       <Divider />
@@ -395,14 +290,7 @@ function PostProcessingSection() {
         checked={pp.noiseEnabled}
         onCheckedChange={(v) => setPP({ noiseEnabled: v })}
       >
-        <SliderRow
-          label="Opacity"
-          value={pp.noiseOpacity}
-          min={0}
-          max={0.5}
-          step={0.005}
-          onChange={(v) => setPP({ noiseOpacity: v })}
-        />
+        <SliderRow label="Opacity" value={pp.noiseOpacity} min={0} max={0.5} step={0.005} onChange={(v) => setPP({ noiseOpacity: v })} />
       </ToggleSection>
 
       <Divider />
@@ -413,36 +301,9 @@ function PostProcessingSection() {
         checked={pp.toneMappingEnabled}
         onCheckedChange={(v) => setPP({ toneMappingEnabled: v })}
       >
-        <SliderRow
-          label="Exposure"
-          value={pp.toneMappingExposure}
-          min={0}
-          max={4}
-          step={0.01}
-          onChange={(v) => setPP({ toneMappingExposure: v })}
-        />
+        <SliderRow label="Exposure" value={pp.toneMappingExposure} min={0} max={4} step={0.01} onChange={(v) => setPP({ toneMappingExposure: v })} />
       </ToggleSection>
     </>
-  );
-}
-
-// ─── RightPanel ───────────────────────────────────────────────────────────────
-
-export default function RightPanel() {
-  const activePanel = useEditorStore((s) => s.activePanel);
-
-  return (
-    <div className="pointer-events-auto flex flex-col h-full w-[220px] rounded-2xl overflow-hidden bg-[#0e1117]/90 backdrop-blur-xl border border-white/[0.06] shadow-2xl shadow-black/50">
-      <div className="flex-1 overflow-y-auto scrollbar-hide py-1">
-        {/* Text 탭일 때만 3D Text 추가 설정 표시 */}
-        {activePanel === "text" && <TextMaterialSection />}
-
-        <LightingSection />
-        <Divider />
-        <PostProcessingSection />
-        <div className="h-3" />
-      </div>
-    </div>
   );
 }
 
@@ -463,30 +324,30 @@ function TextMaterialSection() {
 
   return (
     <>
-      <RowLabel icon={<Sun size={13} />} label="3D Text" chevron />
+      <RowLabel icon={<Sun size={14} />} label="3D Text" />
       <Divider />
 
       <SectionLabel label="Material" />
-      <div className="px-3 pb-2">
-        <div className="grid grid-cols-2 gap-1">
+      <div className="px-4 pb-3">
+        <div className="grid grid-cols-2 gap-1.5">
           {TEXT_MATERIAL_TYPES.map(({ key, label, desc }) => (
             <button
               key={key}
               onClick={() => setText({ materialType: key })}
-              className={`flex flex-col items-start px-2.5 py-2 rounded-xl text-left transition-all ${
+              className={`flex flex-col items-start px-3 py-2.5 rounded-xl text-left transition-all ${
                 text.materialType === key
                   ? "bg-blue-600/30 border border-blue-500/50"
                   : "bg-white/[0.04] border border-white/[0.06] hover:bg-white/[0.08]"
               }`}
             >
               <span
-                className={`text-[11px] font-semibold ${
+                className={`text-[12px] font-semibold ${
                   text.materialType === key ? "text-blue-300" : "text-slate-300"
                 }`}
               >
                 {label}
               </span>
-              <span className="text-[9px] text-slate-600">{desc}</span>
+              <span className="text-[10px] text-slate-600 mt-0.5">{desc}</span>
             </button>
           ))}
         </div>
@@ -558,38 +419,10 @@ function TextMaterialSection() {
 
       <Divider />
       <SectionLabel label="Geometry" />
-      <SliderRow
-        label="Size"
-        value={text.size}
-        min={0.1}
-        max={5}
-        step={0.05}
-        onChange={(v) => setText({ size: v })}
-      />
-      <SliderRow
-        label="Depth"
-        value={text.depth}
-        min={0}
-        max={1}
-        step={0.01}
-        onChange={(v) => setText({ depth: v })}
-      />
-      <SliderRow
-        label="Letter Spacing"
-        value={text.letterSpacing}
-        min={-0.5}
-        max={1}
-        step={0.01}
-        onChange={(v) => setText({ letterSpacing: v })}
-      />
-      <SliderRow
-        label="Position Y"
-        value={text.positionY}
-        min={-5}
-        max={5}
-        step={0.05}
-        onChange={(v) => setText({ positionY: v })}
-      />
+      <SliderRow label="Size" value={text.size} min={0.1} max={5} step={0.05} onChange={(v) => setText({ size: v })} />
+      <SliderRow label="Depth" value={text.depth} min={0} max={1} step={0.01} onChange={(v) => setText({ depth: v })} />
+      <SliderRow label="Letter Spacing" value={text.letterSpacing} min={-0.5} max={1} step={0.01} onChange={(v) => setText({ letterSpacing: v })} />
+      <SliderRow label="Position Y" value={text.positionY} min={-5} max={5} step={0.05} onChange={(v) => setText({ positionY: v })} />
 
       <Divider />
       <ToggleSection
@@ -598,25 +431,29 @@ function TextMaterialSection() {
         checked={text.bevelEnabled}
         onCheckedChange={(v) => setText({ bevelEnabled: v })}
       >
-        <SliderRow
-          label="Thickness"
-          value={text.bevelThickness}
-          min={0}
-          max={0.2}
-          step={0.002}
-          onChange={(v) => setText({ bevelThickness: v })}
-        />
-        <SliderRow
-          label="Size"
-          value={text.bevelSize}
-          min={0}
-          max={0.1}
-          step={0.001}
-          onChange={(v) => setText({ bevelSize: v })}
-        />
+        <SliderRow label="Thickness" value={text.bevelThickness} min={0} max={0.2} step={0.002} onChange={(v) => setText({ bevelThickness: v })} />
+        <SliderRow label="Size" value={text.bevelSize} min={0} max={0.1} step={0.001} onChange={(v) => setText({ bevelSize: v })} />
       </ToggleSection>
 
       <Divider />
     </>
+  );
+}
+
+// ─── RightPanel ───────────────────────────────────────────────────────────────
+
+export default function RightPanel() {
+  const activePanel = useEditorStore((s) => s.activePanel);
+
+  return (
+    <div className="pointer-events-auto flex flex-col h-full w-[240px] rounded-2xl overflow-hidden bg-[#0e1117]/92 backdrop-blur-xl border border-white/[0.07] shadow-2xl shadow-black/60">
+      <div className="flex-1 overflow-y-auto scrollbar-hide pb-2">
+        {activePanel === "text" && <TextMaterialSection />}
+        <LightingSection />
+        <Divider />
+        <PostProcessingSection />
+        <div className="h-4" />
+      </div>
+    </div>
   );
 }

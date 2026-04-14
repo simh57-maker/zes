@@ -19,6 +19,7 @@ import {
   GizmoViewport,
   PerspectiveCamera,
   Text3D,
+  useFont,
 } from "@react-three/drei";
 import {
   EffectComposer,
@@ -57,7 +58,25 @@ function SVGMesh({ data }: { data: any }) {
 
   const geometry = useMemo(() => {
     const shapes: THREE.Shape[] = [];
-    for (const path of data.paths) shapes.push(...path.toShapes(true));
+    for (const path of data.paths) {
+      const fill = path.userData?.style?.fill;
+      // 흰색/없음/투명 fill인 path는 배경이므로 무시
+      if (fill === "none" || fill === undefined) continue;
+      if (typeof fill === "string") {
+        const c = fill.trim().toLowerCase();
+        // #fff, #ffffff, white, rgb(255,255,255) 계열 배경 제외
+        if (
+          c === "#fff" || c === "#ffffff" || c === "white" ||
+          c === "rgb(255,255,255)" || c === "rgb(255, 255, 255)"
+        ) continue;
+      }
+      // isCCW=false: SVG 기본 winding(CW 외곽선)을 solid로 처리
+      shapes.push(...path.toShapes(false));
+    }
+    // 모든 path를 필터링한 경우 fallback: fill 무관하게 모두 포함
+    if (shapes.length === 0) {
+      for (const path of data.paths) shapes.push(...path.toShapes(false));
+    }
     const extrudeSettings = {
       depth: 1,
       bevelEnabled: true,
@@ -177,10 +196,90 @@ function buildTextMaterial(
   }
 }
 
-const fontCache = new Map<string, any>();
-const fontCallbacks = new Map<string, Array<(d: any) => void>>();
+// ─── Font cache: TTF → drei FontData 변환 후 모듈 레벨 고정 참조 유지 ──────
+// drei useFont는 suspend-react([fontDataObj])로 캐시함.
+// 객체 참조가 바뀌면 캐시 미스 → 무한 suspend.
+// 해결: URL별로 파싱된 객체를 fontDataStore에 고정하고,
+//       useFont.preload()로 미리 등록한 뒤 동일 참조를 Text3D에 전달.
 
-function Text3DMesh({ fontData }: { fontData: any }) {
+const fontDataStore = new Map<string, any>(); // url → stable FontData object
+const fontLoadingSet = new Set<string>();
+
+function pathToTroikaOutline(commands: any[], scale: number): string {
+  const r = (v: number) => String(Math.round(v * scale));
+  const rn = (v: number) => String(Math.round(-v * scale));
+  let d = "";
+  for (const cmd of commands) {
+    switch (cmd.type) {
+      case "M": d += ` M ${r(cmd.x)} ${rn(cmd.y)}`; break;
+      case "L": d += ` L ${r(cmd.x)} ${rn(cmd.y)}`; break;
+      case "C": d += ` C ${r(cmd.x1)} ${rn(cmd.y1)} ${r(cmd.x2)} ${rn(cmd.y2)} ${r(cmd.x)} ${rn(cmd.y)}`; break;
+      case "Q": d += ` Q ${r(cmd.x1)} ${rn(cmd.y1)} ${r(cmd.x)} ${rn(cmd.y)}`; break;
+      case "Z": d += " Z"; break;
+    }
+  }
+  return d.trim();
+}
+
+async function loadFontData(url: string): Promise<any> {
+  const { parse } = await import("opentype.js");
+  const buf = await fetch(url).then((r) => r.arrayBuffer());
+  const font = parse(buf);
+  const upem = font.unitsPerEm || 1000;
+  const scale = 1000 / upem;
+  const glyphs: Record<string, any> = {};
+  for (let cp = 32; cp <= 126; cp++) {
+    const ch = String.fromCodePoint(cp);
+    const g = font.charToGlyph(ch);
+    if (!g) continue;
+    const ha = Math.round((g.advanceWidth ?? 0) * scale);
+    const outline = pathToTroikaOutline(g.getPath(0, 0, upem).commands, scale);
+    glyphs[ch] = { _cachedOutline: outline.split(" "), ha, o: outline };
+  }
+  for (let cp = 44032; cp <= 55203; cp++) {
+    const ch = String.fromCodePoint(cp);
+    const g = font.charToGlyph(ch);
+    if (!g || g.index === 0) continue;
+    const ha = Math.round((g.advanceWidth ?? 0) * scale);
+    const outline = pathToTroikaOutline(g.getPath(0, 0, upem).commands, scale);
+    glyphs[ch] = { _cachedOutline: outline.split(" "), ha, o: outline };
+  }
+  return {
+    familyName: font.names?.fontFamily?.en ?? "Custom",
+    resolution: 1000,
+    boundingBox: {
+      yMin: Math.round((font.descender ?? -200) * scale),
+      yMax: Math.round((font.ascender ?? 800) * scale),
+    },
+    underlineThickness: 50,
+    glyphs,
+  };
+}
+
+// 폰트를 미리 로드해 fontDataStore + useFont 캐시에 등록
+function useFontPreload(url: string | null) {
+  const [readyUrl, setReadyUrl] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!url) { setReadyUrl(null); return; }
+    if (fontDataStore.has(url)) { setReadyUrl(url); return; }
+    if (fontLoadingSet.has(url)) return;
+    fontLoadingSet.add(url);
+    loadFontData(url)
+      .then((data) => {
+        fontDataStore.set(url, data);
+        // suspend-react 캐시에 동일 참조로 등록
+        useFont.preload(data);
+        setReadyUrl(url);
+      })
+      .catch(() => { fontLoadingSet.delete(url); });
+  }, [url]);
+
+  if (!url || readyUrl !== url) return null;
+  return fontDataStore.get(url) ?? null;
+}
+
+function Text3DInner({ fontData }: { fontData: any }) {
   const text = useEditorStore((s) => s.text);
   const groupRef = useRef<THREE.Group>(null);
 
@@ -195,8 +294,6 @@ function Text3DMesh({ fontData }: { fontData: any }) {
     const mat = mesh?.material as THREE.MeshStandardMaterial | undefined;
     if (mat?.emissive) mat.emissiveIntensity = 0.4 + 0.6 * Math.abs(Math.sin(1.8 * clock.getElapsedTime()));
   });
-
-  if (!text.visible || !text.content.trim()) return null;
 
   return (
     <group ref={groupRef} position={[0, text.positionY, 0]}>
@@ -223,87 +320,11 @@ function Text3DMesh({ fontData }: { fontData: any }) {
 }
 
 function FontLoader() {
-  const fontVariant = useEditorStore((s) => s.text.fontVariant);
-  const [fontData, setFontData] = useState<any>(null);
+  const text = useEditorStore((s) => s.text);
+  const fontData = useFontPreload(text.fontVariant || null);
 
-  useEffect(() => {
-    if (!fontVariant) { setFontData(null); return; }
-    setFontData(null);
-    const cb = (d: any) => setFontData(d);
-    const cached = fontCache.get(fontVariant);
-    if (cached === "loading") {
-      fontCallbacks.get(fontVariant)!.push(cb);
-    } else if (cached === "error") {
-      setFontData(null);
-    } else if (cached) {
-      cb(cached);
-    } else {
-      fontCache.set(fontVariant, "loading");
-      fontCallbacks.set(fontVariant, [cb]);
-      import("opentype.js").then(({ parse }) => {
-        fetch(fontVariant)
-          .then((r) => r.arrayBuffer())
-          .then((buf) => {
-            const font = parse(buf);
-            const upem = font.unitsPerEm || 1000;
-            const scale = 1000 / upem;
-            const glyphs: Record<string, any> = {};
-            for (let cp = 32; cp <= 126; cp++) {
-              const ch = String.fromCodePoint(cp);
-              const g = font.charToGlyph(ch);
-              if (!g) continue;
-              const ha = Math.round((g.advanceWidth ?? 0) * scale);
-              const outline = pathToTroikaOutline(g.getPath(0, 0, upem).commands, scale);
-              glyphs[ch] = { _cachedOutline: outline.split(" "), ha, o: outline };
-            }
-            for (let cp = 44032; cp <= 55203; cp++) {
-              const ch = String.fromCodePoint(cp);
-              const g = font.charToGlyph(ch);
-              if (!g || g.index === 0) continue;
-              const ha = Math.round((g.advanceWidth ?? 0) * scale);
-              const outline = pathToTroikaOutline(g.getPath(0, 0, upem).commands, scale);
-              glyphs[ch] = { _cachedOutline: outline.split(" "), ha, o: outline };
-            }
-            const result = {
-              familyName: font.names?.fontFamily?.en ?? "Custom",
-              resolution: 1000,
-              boundingBox: {
-                yMin: Math.round((font.descender ?? -200) * scale),
-                yMax: Math.round((font.ascender ?? 800) * scale),
-              },
-              underlineThickness: 50,
-              glyphs,
-            };
-            fontCache.set(fontVariant, result);
-            fontCallbacks.get(fontVariant)!.forEach((f) => f(result));
-            fontCallbacks.delete(fontVariant);
-          })
-          .catch(() => {
-            fontCache.set(fontVariant, "error");
-            fontCallbacks.get(fontVariant)!.forEach((f) => f(null));
-            fontCallbacks.delete(fontVariant);
-          });
-      });
-    }
-  }, [fontVariant]);
-
-  return fontData ? <Text3DMesh fontData={fontData} /> : null;
-}
-
-function pathToTroikaOutline(commands: any[], scale: number): string {
-  const r = (v: number) => String(Math.round(v * scale));
-  const rn = (v: number) => String(Math.round(-v * scale));
-  let d = "";
-  for (const cmd of commands) {
-    switch (cmd.type) {
-      case "M": d += ` M ${r(cmd.x)} ${rn(cmd.y)}`; break;
-      case "L": d += ` L ${r(cmd.x)} ${rn(cmd.y)}`; break;
-      case "C": d += ` C ${r(cmd.x1)} ${rn(cmd.y1)} ${r(cmd.x2)} ${rn(cmd.y2)} ${r(cmd.x)} ${rn(cmd.y)}`; break;
-      case "Q": d += ` Q ${r(cmd.x1)} ${rn(cmd.y1)} ${r(cmd.x)} ${rn(cmd.y)}`; break;
-      case "Z": d += " Z"; break;
-    }
-  }
-  return d.trim();
+  if (!text.visible || !text.content.trim() || !fontData) return null;
+  return <Text3DInner fontData={fontData} />;
 }
 
 // ─── Per-tab lights / postprocessing (props 기반) ─────────────────────────────
