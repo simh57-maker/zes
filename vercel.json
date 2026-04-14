@@ -1,0 +1,8 @@
+{
+  "builds": [
+    {
+      "src": "ZES/package.json",
+      "use": "@vercel/next"
+    }
+  ]
+}
