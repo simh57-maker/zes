@@ -95,21 +95,21 @@ export type BackgroundState = {
   imageUrl: string | null;
 };
 
-// Assets 탭 기본 배경 — 다크 뉴트럴
+// Assets 탭 기본 배경 — 상단 #020818, 하단 #1F5EFB
 const defaultAssetsBackground: BackgroundState = {
-  type: "solid",
-  solidColor: "#0f1117",
-  gradientFrom: "#1e1b4b",
-  gradientTo: "#0f172a",
+  type: "gradient",
+  solidColor: "#020818",
+  gradientFrom: "#020818",
+  gradientTo: "#1F5EFB",
   imageUrl: null,
 };
 
-// Text 탭 기본 배경 — 딥 블루 그라디언트
+// Text 탭 기본 배경 — 상단 #020818, 하단 #1F5EFB (독립 상태)
 const defaultTextBackground: BackgroundState = {
   type: "gradient",
-  solidColor: "#0a0a1a",
-  gradientFrom: "#0a0a1a",
-  gradientTo: "#1a0a2e",
+  solidColor: "#020818",
+  gradientFrom: "#020818",
+  gradientTo: "#1F5EFB",
   imageUrl: null,
 };
 

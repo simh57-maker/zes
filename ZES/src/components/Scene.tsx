@@ -8,7 +8,7 @@ import {
   useState,
   useEffect,
   Suspense,
-  useCallback,
+  useLayoutEffect,
 } from "react";
 import { Canvas, useFrame, useThree } from "@react-three/fiber";
 import {
@@ -34,10 +34,9 @@ import { SVGLoader } from "three/examples/jsm/loaders/SVGLoader.js";
 import { mergeGeometries } from "three/examples/jsm/utils/BufferGeometryUtils.js";
 import {
   useEditorStore,
-  useActiveLights,
-  useActivePostProcessing,
   type LightsState,
   type PostProcessingState,
+  type BackgroundState,
 } from "@/store";
 import type { ExportRef } from "./TopBar";
 
@@ -58,10 +57,7 @@ function SVGMesh({ data }: { data: any }) {
 
   const geometry = useMemo(() => {
     const shapes: THREE.Shape[] = [];
-    for (const path of data.paths) {
-      shapes.push(...path.toShapes(true));
-    }
-
+    for (const path of data.paths) shapes.push(...path.toShapes(true));
     const extrudeSettings = {
       depth: 1,
       bevelEnabled: true,
@@ -70,12 +66,8 @@ function SVGMesh({ data }: { data: any }) {
       bevelSegments: 5,
       curveSegments: 32,
     };
-
-    const geoms: THREE.BufferGeometry[] = shapes.map(
-      (s) => new THREE.ExtrudeGeometry(s, extrudeSettings)
-    );
+    const geoms = shapes.map((s) => new THREE.ExtrudeGeometry(s, extrudeSettings));
     if (geoms.length === 0) return new THREE.BufferGeometry();
-
     const merged = mergeGeometries(geoms, false) ?? geoms[0];
     merged.scale(1, -1, 1);
     merged.computeBoundingBox();
@@ -151,14 +143,6 @@ function SVGLoader3D() {
   return data ? <SVGMesh data={data} /> : null;
 }
 
-function SVGScene() {
-  return (
-    <Suspense fallback={null}>
-      <SVGLoader3D />
-    </Suspense>
-  );
-}
-
 // ─── Text 3D ──────────────────────────────────────────────────────────────────
 
 function buildTextMaterial(
@@ -176,31 +160,19 @@ function buildTextMaterial(
     case "metallic":
       return new THREE.MeshStandardMaterial({ color: c, metalness: 0.95, roughness: 0.05, envMapIntensity: 2 });
     case "glass":
-      return new THREE.MeshPhysicalMaterial({
-        color: c, metalness: 0, roughness: 0,
-        transmission: 0.85, thickness: 0.5, ior: 1.5,
-        transparent: true, opacity: 0.5,
-      });
+      return new THREE.MeshPhysicalMaterial({ color: c, metalness: 0, roughness: 0, transmission: 0.85, thickness: 0.5, ior: 1.5, transparent: true, opacity: 0.5 });
     case "neon":
-      return new THREE.MeshStandardMaterial({
-        color: c, emissive: e, emissiveIntensity: Math.max(emissiveIntensity, 2.5),
-        metalness: 0, roughness: 0.3, toneMapped: false,
-      });
+      return new THREE.MeshStandardMaterial({ color: c, emissive: e, emissiveIntensity: Math.max(emissiveIntensity, 2.5), metalness: 0, roughness: 0.3, toneMapped: false });
     case "holographic":
-      return new THREE.MeshStandardMaterial({
-        color: c, emissive: e, emissiveIntensity: 0.8,
-        metalness: 0.8, roughness: 0.1, transparent: true, opacity: 0.75,
-      });
+      return new THREE.MeshStandardMaterial({ color: c, emissive: e, emissiveIntensity: 0.8, metalness: 0.8, roughness: 0.1, transparent: true, opacity: 0.75 });
     case "matte":
       return new THREE.MeshLambertMaterial({ color: c, transparent: opacity < 1, opacity });
     default:
       return new THREE.MeshStandardMaterial({
         color: c,
         emissive: emissiveIntensity > 0 ? e : new THREE.Color(0),
-        emissiveIntensity,
-        metalness, roughness,
-        transparent: opacity < 1, opacity,
-        envMapIntensity: 1,
+        emissiveIntensity, metalness, roughness,
+        transparent: opacity < 1, opacity, envMapIntensity: 1,
       });
   }
 }
@@ -213,34 +185,15 @@ function Text3DMesh({ fontData }: { fontData: any }) {
   const groupRef = useRef<THREE.Group>(null);
 
   const material = useMemo(
-    () =>
-      buildTextMaterial(
-        text.materialType,
-        text.color,
-        text.emissiveColor,
-        text.emissiveIntensity,
-        text.metalness,
-        text.roughness,
-        text.opacity
-      ),
-    [
-      text.materialType,
-      text.color,
-      text.emissiveColor,
-      text.emissiveIntensity,
-      text.metalness,
-      text.roughness,
-      text.opacity,
-    ]
+    () => buildTextMaterial(text.materialType, text.color, text.emissiveColor, text.emissiveIntensity, text.metalness, text.roughness, text.opacity),
+    [text.materialType, text.color, text.emissiveColor, text.emissiveIntensity, text.metalness, text.roughness, text.opacity]
   );
 
   useFrame(({ clock }) => {
     if (text.materialType !== "holographic" || !groupRef.current) return;
     const mesh = groupRef.current.children[0]?.children[0] as THREE.Mesh | undefined;
     const mat = mesh?.material as THREE.MeshStandardMaterial | undefined;
-    if (mat?.emissive) {
-      mat.emissiveIntensity = 0.4 + 0.6 * Math.abs(Math.sin(1.8 * clock.getElapsedTime()));
-    }
+    if (mat?.emissive) mat.emissiveIntensity = 0.4 + 0.6 * Math.abs(Math.sin(1.8 * clock.getElapsedTime()));
   });
 
   if (!text.visible || !text.content.trim()) return null;
@@ -287,7 +240,6 @@ function FontLoader() {
     } else {
       fontCache.set(fontVariant, "loading");
       fontCallbacks.set(fontVariant, [cb]);
-
       import("opentype.js").then(({ parse }) => {
         fetch(fontVariant)
           .then((r) => r.arrayBuffer())
@@ -296,28 +248,22 @@ function FontLoader() {
             const upem = font.unitsPerEm || 1000;
             const scale = 1000 / upem;
             const glyphs: Record<string, any> = {};
-
-            // ASCII printable
             for (let cp = 32; cp <= 126; cp++) {
               const ch = String.fromCodePoint(cp);
               const g = font.charToGlyph(ch);
               if (!g) continue;
               const ha = Math.round((g.advanceWidth ?? 0) * scale);
-              const path = g.getPath(0, 0, upem);
-              const outline = pathToTroikaOutline(path.commands, scale);
+              const outline = pathToTroikaOutline(g.getPath(0, 0, upem).commands, scale);
               glyphs[ch] = { _cachedOutline: outline.split(" "), ha, o: outline };
             }
-            // Korean
             for (let cp = 44032; cp <= 55203; cp++) {
               const ch = String.fromCodePoint(cp);
               const g = font.charToGlyph(ch);
               if (!g || g.index === 0) continue;
               const ha = Math.round((g.advanceWidth ?? 0) * scale);
-              const path = g.getPath(0, 0, upem);
-              const outline = pathToTroikaOutline(path.commands, scale);
+              const outline = pathToTroikaOutline(g.getPath(0, 0, upem).commands, scale);
               glyphs[ch] = { _cachedOutline: outline.split(" "), ha, o: outline };
             }
-
             const result = {
               familyName: font.names?.fontFamily?.en ?? "Custom",
               resolution: 1000,
@@ -360,19 +306,9 @@ function pathToTroikaOutline(commands: any[], scale: number): string {
   return d.trim();
 }
 
-function TextScene() {
-  return (
-    <Suspense fallback={null}>
-      <FontLoader />
-    </Suspense>
-  );
-}
+// ─── Per-tab lights / postprocessing (props 기반) ─────────────────────────────
 
-// ─── Lights ───────────────────────────────────────────────────────────────────
-
-function SceneLights() {
-  // 현재 활성 탭의 조명 상태를 읽음
-  const lights = useActiveLights();
+function SceneLights({ lights }: { lights: LightsState }) {
   return (
     <>
       <ambientLight intensity={lights.ambientIntensity} color={lights.ambientColor} />
@@ -392,68 +328,21 @@ function SceneLights() {
   );
 }
 
-// ─── Post Processing ──────────────────────────────────────────────────────────
-
-function ScenePostProcessing() {
-  // 현재 활성 탭의 후처리 상태를 읽음
-  const pp = useActivePostProcessing();
-  if (
-    !pp.bloomEnabled &&
-    !pp.ssaoEnabled &&
-    !pp.vignetteEnabled &&
-    !pp.noiseEnabled &&
-    !pp.toneMappingEnabled
-  )
+function ScenePostProcessing({ pp }: { pp: PostProcessingState }) {
+  if (!pp.bloomEnabled && !pp.ssaoEnabled && !pp.vignetteEnabled && !pp.noiseEnabled && !pp.toneMappingEnabled)
     return null;
-
   return (
     <EffectComposer multisampling={4}>
-      {pp.bloomEnabled ? (
-        <Bloom
-          intensity={pp.bloomIntensity}
-          luminanceThreshold={pp.bloomThreshold}
-          luminanceSmoothing={pp.bloomSmoothing}
-          mipmapBlur
-        />
-      ) : <></>}
-      {pp.ssaoEnabled ? (
-        <SSAO
-          intensity={pp.ssaoIntensity}
-          radius={pp.ssaoRadius}
-          bias={0.005}
-          samples={16}
-        />
-      ) : <></>}
-      {pp.vignetteEnabled ? (
-        <Vignette
-          offset={pp.vignetteOffset}
-          darkness={pp.vignetteDarkness}
-          blendFunction={BlendFunction.NORMAL}
-        />
-      ) : <></>}
-      {pp.noiseEnabled ? (
-        <Noise opacity={pp.noiseOpacity} blendFunction={BlendFunction.ADD} />
-      ) : <></>}
-      {pp.toneMappingEnabled ? (
-        <ToneMapping mode={ToneMappingMode.ACES_FILMIC} exposure={pp.toneMappingExposure} />
-      ) : <></>}
+      {pp.bloomEnabled ? <Bloom intensity={pp.bloomIntensity} luminanceThreshold={pp.bloomThreshold} luminanceSmoothing={pp.bloomSmoothing} mipmapBlur /> : <></>}
+      {pp.ssaoEnabled ? <SSAO intensity={pp.ssaoIntensity} radius={pp.ssaoRadius} bias={0.005} samples={16} /> : <></>}
+      {pp.vignetteEnabled ? <Vignette offset={pp.vignetteOffset} darkness={pp.vignetteDarkness} blendFunction={BlendFunction.NORMAL} /> : <></>}
+      {pp.noiseEnabled ? <Noise opacity={pp.noiseOpacity} blendFunction={BlendFunction.ADD} /> : <></>}
+      {pp.toneMappingEnabled ? <ToneMapping mode={ToneMappingMode.ACES_FILMIC} exposure={pp.toneMappingExposure} /> : <></>}
     </EffectComposer>
   );
 }
 
-// ─── Tab-specific objects ─────────────────────────────────────────────────────
-
-// Assets 탭: SVG만 표시
-function AssetsObjects() {
-  return <SVGScene />;
-}
-
-// Text 탭: 3D Text만 표시
-function TextObjects() {
-  return <TextScene />;
-}
-
-// ─── Export helper (inside canvas) ───────────────────────────────────────────
+// ─── Export helper ────────────────────────────────────────────────────────────
 
 const ExportHelper = forwardRef<ExportRef>(function ExportHelper(_, ref) {
   const { gl, scene, camera } = useThree();
@@ -464,10 +353,7 @@ const ExportHelper = forwardRef<ExportRef>(function ExportHelper(_, ref) {
       gl.setSize(size.x * resolution, size.y * resolution, false);
       gl.setPixelRatio(window.devicePixelRatio * resolution);
       gl.render(scene, camera);
-      const dataUrl = gl.domElement.toDataURL(
-        format === "jpg" ? "image/jpeg" : "image/png",
-        0.95
-      );
+      const dataUrl = gl.domElement.toDataURL(format === "jpg" ? "image/jpeg" : "image/png", 0.95);
       gl.setSize(size.x, size.y, false);
       gl.setPixelRatio(window.devicePixelRatio);
       const a = document.createElement("a");
@@ -479,69 +365,142 @@ const ExportHelper = forwardRef<ExportRef>(function ExportHelper(_, ref) {
   return null;
 });
 
-// ─── Scene component ──────────────────────────────────────────────────────────
+// ─── Background (CSS, per-tab) ────────────────────────────────────────────────
+
+function BgLayer({ bg }: { bg: BackgroundState }) {
+  let style: React.CSSProperties = {};
+  if (bg.type === "solid") {
+    style = { backgroundColor: bg.solidColor };
+  } else if (bg.type === "gradient") {
+    style = { background: `linear-gradient(180deg, ${bg.gradientFrom} 0%, ${bg.gradientTo} 100%)` };
+  } else if (bg.type === "image" && bg.imageUrl) {
+    style = { backgroundImage: `url(${bg.imageUrl})`, backgroundSize: "cover", backgroundPosition: "center" };
+  } else {
+    style = { backgroundColor: "#020818" };
+  }
+  return <div className="absolute inset-0 z-0" style={style} />;
+}
+
+// ─── Single tab canvas ────────────────────────────────────────────────────────
+
+interface TabCanvasProps {
+  lights: LightsState;
+  pp: PostProcessingState;
+  bg: BackgroundState;
+  exportRef: React.RefObject<ExportRef | null>;
+  children: React.ReactNode; // 탭별 3D 오브젝트
+}
+
+function TabCanvas({ lights, pp, bg, exportRef, children }: TabCanvasProps) {
+  return (
+    <div className="absolute inset-0">
+      {/* CSS 배경 — 이 탭 전용 */}
+      <BgLayer bg={bg} />
+
+      {/* WebGL Canvas — 이 탭 전용 */}
+      <div className="absolute inset-0 z-10">
+        <Canvas
+          shadows
+          gl={{
+            antialias: true,
+            alpha: true,
+            preserveDrawingBuffer: true,
+            outputColorSpace: THREE.SRGBColorSpace,
+            toneMapping: THREE.NoToneMapping,
+          }}
+          dpr={[1, 2]}
+          style={{ display: "block", width: "100%", height: "100%" }}
+        >
+          <PerspectiveCamera makeDefault fov={45} position={[0, 3, 8]} near={0.1} far={500} />
+          <Environment preset="studio" background={false} />
+          <SceneLights lights={lights} />
+          {children}
+          <ScenePostProcessing pp={pp} />
+          <OrbitControls makeDefault enableDamping dampingFactor={0.05} minDistance={1} maxDistance={60} maxPolarAngle={0.9 * Math.PI} />
+          <GizmoHelper alignment="bottom-right" margin={[70, 70]}>
+            <GizmoViewport axisColors={["#ef4444", "#22c55e", "#3b82f6"]} labelColor="white" />
+          </GizmoHelper>
+          <ExportHelper ref={exportRef} />
+        </Canvas>
+      </div>
+    </div>
+  );
+}
+
+// ─── Scene — 탭별 독립 Canvas를 mount 유지하고 display로 토글 ───────────────
+
+export interface SceneHandle {
+  exportImage: (format: "png" | "jpg", resolution: number) => void;
+}
 
 interface SceneProps {
   exportRef: React.RefObject<ExportRef | null>;
 }
 
-const Scene = forwardRef<ExportRef, SceneProps>(function Scene({ exportRef }) {
-  const isExporting = useEditorStore((s) => s.isExporting);
-  const activePanel = useEditorStore((s) => s.activePanel);
+export default function Scene({ exportRef }: SceneProps) {
+  const activePanel   = useEditorStore((s) => s.activePanel);
+  const isExporting   = useEditorStore((s) => s.isExporting);
+
+  // Assets 탭 상태
+  const assetsBg   = useEditorStore((s) => s.assetsBackground);
+  const assetsLights = useEditorStore((s) => s.assetsLights);
+  const assetsPP   = useEditorStore((s) => s.assetsPostProcessing);
+
+  // Text 탭 상태
+  const textBg     = useEditorStore((s) => s.textBackground);
+  const textLights = useEditorStore((s) => s.textLights);
+  const textPP     = useEditorStore((s) => s.textPostProcessing);
+
+  // export ref는 현재 보이는 탭 Canvas에 연결
+  const assetsExportRef = useRef<ExportRef>(null);
+  const textExportRef   = useRef<ExportRef>(null);
+
+  // exportRef.current 를 activePanel 기준 Canvas의 핸들로 위임
+  useLayoutEffect(() => {
+    if (!exportRef) return;
+    (exportRef as React.MutableRefObject<ExportRef | null>).current = {
+      exportImage(format: "png" | "jpg", resolution: number) {
+        if (activePanel === "assets") assetsExportRef.current?.exportImage(format, resolution);
+        else textExportRef.current?.exportImage(format, resolution);
+      },
+    };
+  }, [activePanel, exportRef]);
 
   return (
-    <div className="absolute inset-0 z-10">
-      <div style={{ position: "relative", width: "100%", height: "100%", pointerEvents: "auto" }}>
-        <div style={{ width: "100%", height: "100%" }}>
-          <Canvas
-            shadows
-            gl={{
-              antialias: true,
-              alpha: true,
-              preserveDrawingBuffer: true,
-              outputColorSpace: THREE.SRGBColorSpace,
-              toneMapping: THREE.NoToneMapping,
-            }}
-            dpr={[1, 2]}
-            style={{ display: "block" }}
-          >
-            <PerspectiveCamera makeDefault fov={45} position={[0, 3, 8]} near={0.1} far={500} />
-            <Environment preset="studio" background={false} />
-            {/* 탭별 독립 조명 */}
-            <SceneLights />
-            {/* 탭별 독립 오브젝트 */}
-            {activePanel === "assets" ? <AssetsObjects /> : <TextObjects />}
-            {/* 탭별 독립 후처리 */}
-            <ScenePostProcessing />
-            <OrbitControls
-              makeDefault
-              enableDamping
-              dampingFactor={0.05}
-              minDistance={1}
-              maxDistance={60}
-              maxPolarAngle={0.9 * Math.PI}
-            />
-            <GizmoHelper alignment="bottom-right" margin={[70, 70]}>
-              <GizmoViewport
-                axisColors={["#ef4444", "#22c55e", "#3b82f6"]}
-                labelColor="white"
-              />
-            </GizmoHelper>
-            <ExportHelper ref={exportRef} />
-          </Canvas>
-        </div>
-
-        {isExporting && (
-          <div className="absolute inset-0 flex items-center justify-center bg-black/60 backdrop-blur-sm z-20">
-            <div className="flex flex-col items-center gap-3">
-              <div className="w-8 h-8 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
-              <span className="text-sm text-slate-300">Rendering…</span>
-            </div>
-          </div>
-        )}
+    <div className="absolute inset-0 z-10" style={{ pointerEvents: "auto" }}>
+      {/* Assets Canvas — 항상 마운트, 비활성 시 숨김 */}
+      <div
+        className="absolute inset-0"
+        style={{ display: activePanel === "assets" ? "block" : "none" }}
+      >
+        <TabCanvas lights={assetsLights} pp={assetsPP} bg={assetsBg} exportRef={assetsExportRef}>
+          <Suspense fallback={null}>
+            <SVGLoader3D />
+          </Suspense>
+        </TabCanvas>
       </div>
+
+      {/* Text Canvas — 항상 마운트, 비활성 시 숨김 */}
+      <div
+        className="absolute inset-0"
+        style={{ display: activePanel === "text" ? "block" : "none" }}
+      >
+        <TabCanvas lights={textLights} pp={textPP} bg={textBg} exportRef={textExportRef}>
+          <Suspense fallback={null}>
+            <FontLoader />
+          </Suspense>
+        </TabCanvas>
+      </div>
+
+      {/* 렌더링 중 오버레이 */}
+      {isExporting && (
+        <div className="absolute inset-0 flex items-center justify-center bg-black/60 backdrop-blur-sm z-20">
+          <div className="flex flex-col items-center gap-3">
+            <div className="w-8 h-8 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
+            <span className="text-sm text-slate-300">Rendering…</span>
+          </div>
+        </div>
+      )}
     </div>
   );
-});
-
-export default Scene;
+}
