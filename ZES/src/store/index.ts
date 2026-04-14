@@ -4,8 +4,8 @@ import { subscribeWithSelector } from "zustand/middleware";
 // ─── Default values ──────────────────────────────────────────────────────────
 
 export const defaultSvg = {
-  url: "/asset/svg/ZES_sample.svg?v=2",
-  name: "ZES_sample.svg",
+  url: "/globe.svg",
+  name: "globe.svg",
   depth: 8,
   metalness: 0.9,
   roughness: 0.1,

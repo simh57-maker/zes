@@ -192,7 +192,7 @@ function AssetsPanel() {
             <span className="text-[11px] text-blue-300 truncate flex-1">{svg.name}</span>
             <button
               onClick={() =>
-                setSvg({ url: "/asset/svg/ZES_sample.svg?v=2", name: "ZES_sample.svg" })
+                setSvg({ url: "/globe.svg", name: "globe.svg" })
               }
               className="text-slate-600 hover:text-red-400 transition-colors p-0.5"
             >

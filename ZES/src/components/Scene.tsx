@@ -18,8 +18,6 @@ import {
   GizmoHelper,
   GizmoViewport,
   PerspectiveCamera,
-  Text3D,
-  useFont,
 } from "@react-three/drei";
 import {
   EffectComposer,
@@ -33,6 +31,7 @@ import { BlendFunction, ToneMappingMode } from "postprocessing";
 import * as THREE from "three";
 import { SVGLoader } from "three/examples/jsm/loaders/SVGLoader.js";
 import { mergeGeometries } from "three/examples/jsm/utils/BufferGeometryUtils.js";
+import { Font, TextGeometry } from "three-stdlib";
 import {
   useEditorStore,
   type LightsState,
@@ -58,26 +57,28 @@ function SVGMesh({ data }: { data: any }) {
 
   const geometry = useMemo(() => {
     const shapes: THREE.Shape[] = [];
+
     for (const path of data.paths) {
       const fill = path.userData?.style?.fill;
-      // 흰색/없음/투명 fill인 path는 배경이므로 무시
-      if (fill === "none" || fill === undefined) continue;
-      if (typeof fill === "string") {
-        const c = fill.trim().toLowerCase();
-        // #fff, #ffffff, white, rgb(255,255,255) 계열 배경 제외
-        if (
-          c === "#fff" || c === "#ffffff" || c === "white" ||
-          c === "rgb(255,255,255)" || c === "rgb(255, 255, 255)"
-        ) continue;
-      }
-      // isCCW=false: SVG 기본 winding(CW 외곽선)을 solid로 처리
-      shapes.push(...path.toShapes(false));
+      // 흰색 / 투명 / none → 배경이므로 제외
+      if (!fill || fill === "none") continue;
+      const c = typeof fill === "string" ? fill.trim().toLowerCase() : "";
+      if (c === "#fff" || c === "#ffffff" || c === "white" ||
+          c === "rgb(255,255,255)" || c === "rgb(255, 255, 255)") continue;
+
+      // SVGLoader.createShapes가 fill-rule(evenodd/nonzero) + 구멍 처리를 모두 담당
+      const s = SVGLoader.createShapes(path);
+      shapes.push(...s);
     }
-    // 모든 path를 필터링한 경우 fallback: fill 무관하게 모두 포함
+
+    // 필터 후 shape가 없으면 전체 포함 (fill 정보 없는 SVG 대응)
     if (shapes.length === 0) {
-      for (const path of data.paths) shapes.push(...path.toShapes(false));
+      for (const path of data.paths) {
+        shapes.push(...SVGLoader.createShapes(path));
+      }
     }
-    const extrudeSettings = {
+
+    const extrudeSettings: THREE.ExtrudeGeometryOptions = {
       depth: 1,
       bevelEnabled: true,
       bevelThickness: 0.04,
@@ -85,9 +86,11 @@ function SVGMesh({ data }: { data: any }) {
       bevelSegments: 5,
       curveSegments: 32,
     };
+
     const geoms = shapes.map((s) => new THREE.ExtrudeGeometry(s, extrudeSettings));
     if (geoms.length === 0) return new THREE.BufferGeometry();
     const merged = mergeGeometries(geoms, false) ?? geoms[0];
+    // SVG Y축 반전 (SVG는 아래가 +Y)
     merged.scale(1, -1, 1);
     merged.computeBoundingBox();
     const size = new THREE.Vector3();
@@ -163,6 +166,8 @@ function SVGLoader3D() {
 }
 
 // ─── Text 3D ──────────────────────────────────────────────────────────────────
+// drei Text3D/useFont는 suspend-react 캐시 키 불일치 문제가 있어서
+// three-stdlib의 Font + TextGeometry를 직접 사용
 
 function buildTextMaterial(
   type: string,
@@ -196,15 +201,7 @@ function buildTextMaterial(
   }
 }
 
-// ─── Font cache: TTF → drei FontData 변환 후 모듈 레벨 고정 참조 유지 ──────
-// drei useFont는 suspend-react([fontDataObj])로 캐시함.
-// 객체 참조가 바뀌면 캐시 미스 → 무한 suspend.
-// 해결: URL별로 파싱된 객체를 fontDataStore에 고정하고,
-//       useFont.preload()로 미리 등록한 뒤 동일 참조를 Text3D에 전달.
-
-const fontDataStore = new Map<string, any>(); // url → stable FontData object
-const fontLoadingSet = new Set<string>();
-
+// opentype.js → drei FontData 포맷 변환 (string path)
 function pathToTroikaOutline(commands: any[], scale: number): string {
   const r = (v: number) => String(Math.round(v * scale));
   const rn = (v: number) => String(Math.round(-v * scale));
@@ -221,21 +218,28 @@ function pathToTroikaOutline(commands: any[], scale: number): string {
   return d.trim();
 }
 
-async function loadFontData(url: string): Promise<any> {
+// 모듈 레벨 캐시 — URL → { fontData, threeFont }
+const fontCache = new Map<string, { fontData: any; threeFont: Font }>();
+const fontLoadingSet = new Set<string>();
+
+async function loadFont(url: string): Promise<{ fontData: any; threeFont: Font }> {
   const { parse } = await import("opentype.js");
   const buf = await fetch(url).then((r) => r.arrayBuffer());
   const font = parse(buf);
   const upem = font.unitsPerEm || 1000;
   const scale = 1000 / upem;
   const glyphs: Record<string, any> = {};
+
+  // ASCII 가시 문자
   for (let cp = 32; cp <= 126; cp++) {
     const ch = String.fromCodePoint(cp);
     const g = font.charToGlyph(ch);
-    if (!g) continue;
+    if (!g || g.index === 0) continue;
     const ha = Math.round((g.advanceWidth ?? 0) * scale);
     const outline = pathToTroikaOutline(g.getPath(0, 0, upem).commands, scale);
     glyphs[ch] = { _cachedOutline: outline.split(" "), ha, o: outline };
   }
+  // 한글 가나다 범위
   for (let cp = 44032; cp <= 55203; cp++) {
     const ch = String.fromCodePoint(cp);
     const g = font.charToGlyph(ch);
@@ -244,7 +248,8 @@ async function loadFontData(url: string): Promise<any> {
     const outline = pathToTroikaOutline(g.getPath(0, 0, upem).commands, scale);
     glyphs[ch] = { _cachedOutline: outline.split(" "), ha, o: outline };
   }
-  return {
+
+  const fontData = {
     familyName: font.names?.fontFamily?.en ?? "Custom",
     resolution: 1000,
     boundingBox: {
@@ -254,77 +259,95 @@ async function loadFontData(url: string): Promise<any> {
     underlineThickness: 50,
     glyphs,
   };
+
+  // three-stdlib Font 인스턴스 생성 — TextGeometry에 직접 전달 가능
+  const threeFont = new Font(fontData);
+  return { fontData, threeFont };
 }
 
-// 폰트를 미리 로드해 fontDataStore + useFont 캐시에 등록
-function useFontPreload(url: string | null) {
-  const [readyUrl, setReadyUrl] = useState<string | null>(null);
+// 폰트 로딩 훅 — 완료되면 { threeFont } 반환
+function useFontLoad(url: string | null): Font | null {
+  const [loadedUrl, setLoadedUrl] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!url) { setReadyUrl(null); return; }
-    if (fontDataStore.has(url)) { setReadyUrl(url); return; }
+    if (!url) { setLoadedUrl(null); return; }
+    if (fontCache.has(url)) { setLoadedUrl(url); return; }
     if (fontLoadingSet.has(url)) return;
     fontLoadingSet.add(url);
-    loadFontData(url)
-      .then((data) => {
-        fontDataStore.set(url, data);
-        // suspend-react 캐시에 동일 참조로 등록
-        useFont.preload(data);
-        setReadyUrl(url);
+    loadFont(url)
+      .then((result) => {
+        fontCache.set(url, result);
+        setLoadedUrl(url);
       })
       .catch(() => { fontLoadingSet.delete(url); });
   }, [url]);
 
-  if (!url || readyUrl !== url) return null;
-  return fontDataStore.get(url) ?? null;
+  if (!url || loadedUrl !== url) return null;
+  return fontCache.get(url)?.threeFont ?? null;
 }
 
-function Text3DInner({ fontData }: { fontData: any }) {
+function Text3DMesh({ threeFont }: { threeFont: Font }) {
   const text = useEditorStore((s) => s.text);
   const groupRef = useRef<THREE.Group>(null);
+  const meshRef = useRef<THREE.Mesh>(null);
+
+  const geometry = useMemo(() => {
+    if (!text.content.trim()) return null;
+    try {
+      const geo = new TextGeometry(text.content, {
+        font: threeFont,
+        size: text.size,
+        height: text.depth,
+        curveSegments: 12,
+        bevelEnabled: text.bevelEnabled,
+        bevelThickness: text.bevelThickness,
+        bevelSize: text.bevelSize,
+        letterSpacing: text.letterSpacing,
+      });
+      geo.computeBoundingBox();
+      // 수평 가운데 정렬
+      const offset = new THREE.Vector3();
+      geo.boundingBox!.getCenter(offset);
+      geo.translate(-offset.x, -offset.y, -offset.z);
+      geo.computeVertexNormals();
+      return geo;
+    } catch {
+      return null;
+    }
+  }, [threeFont, text.content, text.size, text.depth, text.bevelEnabled, text.bevelThickness, text.bevelSize]);
 
   const material = useMemo(
     () => buildTextMaterial(text.materialType, text.color, text.emissiveColor, text.emissiveIntensity, text.metalness, text.roughness, text.opacity),
     [text.materialType, text.color, text.emissiveColor, text.emissiveIntensity, text.metalness, text.roughness, text.opacity]
   );
 
+  useEffect(() => () => { geometry?.dispose(); material.dispose(); }, [geometry, material]);
+
   useFrame(({ clock }) => {
-    if (text.materialType !== "holographic" || !groupRef.current) return;
-    const mesh = groupRef.current.children[0]?.children[0] as THREE.Mesh | undefined;
-    const mat = mesh?.material as THREE.MeshStandardMaterial | undefined;
+    if (text.materialType !== "holographic") return;
+    const mat = meshRef.current?.material as THREE.MeshStandardMaterial | undefined;
     if (mat?.emissive) mat.emissiveIntensity = 0.4 + 0.6 * Math.abs(Math.sin(1.8 * clock.getElapsedTime()));
   });
 
+  if (!geometry) return null;
+
   return (
     <group ref={groupRef} position={[0, text.positionY, 0]}>
-      <Center>
-        <Text3D
-          font={fontData}
-          size={text.size}
-          height={text.depth}
-          curveSegments={12}
-          bevelEnabled={text.bevelEnabled}
-          bevelThickness={text.bevelThickness}
-          bevelSize={text.bevelSize}
-          bevelSegments={5}
-          letterSpacing={text.letterSpacing}
-          castShadow
-          receiveShadow
-        >
-          {text.content}
-          <primitive object={material} attach="material" />
-        </Text3D>
-      </Center>
+      <mesh ref={meshRef} geometry={geometry} material={material} castShadow receiveShadow />
     </group>
   );
 }
 
 function FontLoader() {
   const text = useEditorStore((s) => s.text);
-  const fontData = useFontPreload(text.fontVariant || null);
+  const threeFont = useFontLoad(text.fontVariant || null);
 
-  if (!text.visible || !text.content.trim() || !fontData) return null;
-  return <Text3DInner fontData={fontData} />;
+  if (!text.visible || !text.content.trim()) return null;
+  if (!threeFont) {
+    // 로딩 중 — 작은 스피너 대신 null 반환 (Canvas 안이라 HTML 불가)
+    return null;
+  }
+  return <Text3DMesh threeFont={threeFont} />;
 }
 
 // ─── Per-tab lights / postprocessing (props 기반) ─────────────────────────────
@@ -409,16 +432,13 @@ interface TabCanvasProps {
   pp: PostProcessingState;
   bg: BackgroundState;
   exportRef: React.RefObject<ExportRef | null>;
-  children: React.ReactNode; // 탭별 3D 오브젝트
+  children: React.ReactNode;
 }
 
 function TabCanvas({ lights, pp, bg, exportRef, children }: TabCanvasProps) {
   return (
     <div className="absolute inset-0">
-      {/* CSS 배경 — 이 탭 전용 */}
       <BgLayer bg={bg} />
-
-      {/* WebGL Canvas — 이 탭 전용 */}
       <div className="absolute inset-0 z-10">
         <Canvas
           shadows
@@ -448,7 +468,7 @@ function TabCanvas({ lights, pp, bg, exportRef, children }: TabCanvasProps) {
   );
 }
 
-// ─── Scene — 탭별 독립 Canvas를 mount 유지하고 display로 토글 ───────────────
+// ─── Scene ────────────────────────────────────────────────────────────────────
 
 export interface SceneHandle {
   exportImage: (format: "png" | "jpg", resolution: number) => void;
@@ -462,21 +482,17 @@ export default function Scene({ exportRef }: SceneProps) {
   const activePanel   = useEditorStore((s) => s.activePanel);
   const isExporting   = useEditorStore((s) => s.isExporting);
 
-  // Assets 탭 상태
-  const assetsBg   = useEditorStore((s) => s.assetsBackground);
+  const assetsBg    = useEditorStore((s) => s.assetsBackground);
   const assetsLights = useEditorStore((s) => s.assetsLights);
-  const assetsPP   = useEditorStore((s) => s.assetsPostProcessing);
+  const assetsPP    = useEditorStore((s) => s.assetsPostProcessing);
 
-  // Text 탭 상태
-  const textBg     = useEditorStore((s) => s.textBackground);
-  const textLights = useEditorStore((s) => s.textLights);
-  const textPP     = useEditorStore((s) => s.textPostProcessing);
+  const textBg      = useEditorStore((s) => s.textBackground);
+  const textLights  = useEditorStore((s) => s.textLights);
+  const textPP      = useEditorStore((s) => s.textPostProcessing);
 
-  // export ref는 현재 보이는 탭 Canvas에 연결
   const assetsExportRef = useRef<ExportRef>(null);
   const textExportRef   = useRef<ExportRef>(null);
 
-  // exportRef.current 를 activePanel 기준 Canvas의 핸들로 위임
   useLayoutEffect(() => {
     if (!exportRef) return;
     (exportRef as React.MutableRefObject<ExportRef | null>).current = {
@@ -489,7 +505,7 @@ export default function Scene({ exportRef }: SceneProps) {
 
   return (
     <div className="absolute inset-0 z-10" style={{ pointerEvents: "auto" }}>
-      {/* Assets Canvas — 항상 마운트, 비활성 시 숨김 */}
+      {/* Assets Canvas */}
       <div
         className="absolute inset-0"
         style={{ display: activePanel === "assets" ? "block" : "none" }}
@@ -501,19 +517,16 @@ export default function Scene({ exportRef }: SceneProps) {
         </TabCanvas>
       </div>
 
-      {/* Text Canvas — 항상 마운트, 비활성 시 숨김 */}
+      {/* Text Canvas */}
       <div
         className="absolute inset-0"
         style={{ display: activePanel === "text" ? "block" : "none" }}
       >
         <TabCanvas lights={textLights} pp={textPP} bg={textBg} exportRef={textExportRef}>
-          <Suspense fallback={null}>
-            <FontLoader />
-          </Suspense>
+          <FontLoader />
         </TabCanvas>
       </div>
 
-      {/* 렌더링 중 오버레이 */}
       {isExporting && (
         <div className="absolute inset-0 flex items-center justify-center bg-black/60 backdrop-blur-sm z-20">
           <div className="flex flex-col items-center gap-3">
