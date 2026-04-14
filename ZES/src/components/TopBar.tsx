@@ -15,8 +15,6 @@ interface TopBarProps {
 export default function TopBar({ exportRef }: TopBarProps) {
   const format = useEditorStore((s) => s.exportFormat);
   const setFormat = useEditorStore((s) => s.setExportFormat);
-  const resolution = useEditorStore((s) => s.exportResolution);
-  const setResolution = useEditorStore((s) => s.setExportResolution);
   const isExporting = useEditorStore((s) => s.isExporting);
   const setIsExporting = useEditorStore((s) => s.setIsExporting);
 
@@ -25,34 +23,15 @@ export default function TopBar({ exportRef }: TopBarProps) {
     setIsExporting(true);
     requestAnimationFrame(() => {
       setTimeout(() => {
-        exportRef.current?.exportImage(format, resolution);
+        exportRef.current?.exportImage(format, 1);
         setIsExporting(false);
       }, 100);
     });
-  }, [exportRef, format, resolution, setIsExporting]);
+  }, [exportRef, format, setIsExporting]);
 
   return (
     <div className="absolute top-4 left-1/2 -translate-x-1/2 z-30 pointer-events-auto">
       <div className="flex items-center gap-2 px-3 py-2 rounded-2xl bg-[#12151e]/92 backdrop-blur-md border border-white/[0.07] shadow-xl shadow-black/40">
-        {/* Resolution */}
-        <div className="flex items-center gap-0.5 bg-white/[0.04] rounded-xl p-1">
-          {[1, 2, 4].map((r) => (
-            <button
-              key={r}
-              onClick={() => setResolution(r)}
-              className={`px-3 py-1.5 text-[11px] font-semibold rounded-lg transition-all ${
-                resolution === r
-                  ? "bg-blue-600 text-white shadow-sm"
-                  : "text-slate-400 hover:text-slate-200"
-              }`}
-            >
-              {r}×
-            </button>
-          ))}
-        </div>
-
-        <div className="w-px h-5 bg-white/[0.08]" />
-
         {/* Format */}
         <div className="flex items-center gap-0.5 bg-white/[0.04] rounded-xl p-1">
           {(["png", "jpg"] as const).map((f) => (
