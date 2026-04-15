@@ -45,12 +45,12 @@ function getFontVariants(name: string) {
 // ─── Shared primitives ────────────────────────────────────────────────────────
 
 function Divider() {
-  return <div className="my-3 border-t border-white/[0.06]" />;
+  return <div className="my-4 border-t border-white/[0.06]" />;
 }
 
 function SectionLabel({ label }: { label: string }) {
   return (
-    <p className="text-[10px] font-semibold text-slate-500 uppercase tracking-widest mb-2.5">
+    <p className="text-[10px] font-semibold text-slate-500 uppercase tracking-widest mb-3">
       {label}
     </p>
   );
@@ -60,19 +60,19 @@ function SliderRow({ label, value, min, max, step, onChange }: {
   label: string; value: number; min: number; max: number; step: number; onChange: (v: number) => void;
 }) {
   return (
-    <div className="mb-4">
-      <div className="flex justify-between items-center mb-1.5">
-        <span className="text-[11px] text-slate-400">{label}</span>
-        <span className="text-[10px] text-slate-500 font-mono bg-white/[0.05] px-1.5 py-0.5 rounded">
+    <div className="mb-5">
+      <div className="flex justify-between items-center mb-2">
+        <span className="text-[12px] text-slate-400">{label}</span>
+        <span className="text-[11px] text-slate-500 font-mono bg-white/[0.05] px-2 py-0.5 rounded-md">
           {value.toFixed(step < 0.1 ? 2 : 1)}
         </span>
       </div>
       <Slider.Root min={min} max={max} step={step} value={[value]} onValueChange={(v) => onChange(v[0])}
-        className="relative flex items-center w-full h-4">
+        className="relative flex items-center w-full h-5">
         <Slider.Track className="relative grow rounded-full h-[3px] bg-white/[0.08]">
           <Slider.Range className="absolute rounded-full h-full bg-blue-500" />
         </Slider.Track>
-        <Slider.Thumb className="block w-3 h-3 bg-white rounded-full shadow focus:outline-none cursor-grab active:cursor-grabbing" />
+        <Slider.Thumb className="block w-3.5 h-3.5 bg-white rounded-full shadow-md focus:outline-none focus:ring-2 focus:ring-blue-500/40 cursor-grab active:cursor-grabbing" />
       </Slider.Root>
     </div>
   );
@@ -80,12 +80,12 @@ function SliderRow({ label, value, min, max, step, onChange }: {
 
 function ColorRow({ label, value, onChange }: { label: string; value: string; onChange: (v: string) => void }) {
   return (
-    <div className="flex items-center gap-2.5 p-2.5 bg-white/[0.03] rounded-xl border border-white/[0.06] mb-3">
+    <div className="flex items-center gap-3 p-3 bg-white/[0.03] rounded-xl border border-white/[0.06] mb-3">
       <input type="color" value={value} onChange={(e) => onChange(e.target.value)}
-        className="w-7 h-7 rounded-lg cursor-pointer bg-transparent border border-white/[0.1] flex-shrink-0"
+        className="w-8 h-8 rounded-lg cursor-pointer bg-transparent border border-white/[0.1] flex-shrink-0"
         style={{ padding: "2px" }} />
-      <span className="text-[11px] text-slate-400 flex-1">{label}</span>
-      <span className="text-[10px] text-slate-500 font-mono">{value.toUpperCase()}</span>
+      <span className="text-[12px] text-slate-400 flex-1">{label}</span>
+      <span className="text-[11px] text-slate-500 font-mono">{value.toUpperCase()}</span>
     </div>
   );
 }
@@ -94,15 +94,15 @@ function SwitchRow({ id, label, checked, onCheckedChange, children }: {
   id: string; label: string; checked: boolean; onCheckedChange: (v: boolean) => void; children?: React.ReactNode;
 }) {
   return (
-    <div className="mb-1">
-      <div className="flex items-center gap-3 py-2">
-        <span className="flex-1 text-[11px] text-slate-300">{label}</span>
+    <div className="mb-2">
+      <div className="flex items-center gap-3 py-2.5">
+        <span className="flex-1 text-[12px] text-slate-300">{label}</span>
         <Switch.Root id={id} checked={checked} onCheckedChange={onCheckedChange}
-          className="w-8 h-[18px] rounded-full bg-white/10 data-[state=checked]:bg-blue-600 transition-colors relative flex-shrink-0">
-          <Switch.Thumb className="block w-3.5 h-3.5 bg-white rounded-full shadow transition-transform translate-x-0.5 data-[state=checked]:translate-x-[18px]" />
+          className="w-9 h-5 rounded-full bg-white/10 data-[state=checked]:bg-blue-600 transition-colors relative flex-shrink-0">
+          <Switch.Thumb className="block w-4 h-4 bg-white rounded-full shadow transition-transform translate-x-0.5 data-[state=checked]:translate-x-4" />
         </Switch.Root>
       </div>
-      {checked && <div className="mt-1">{children}</div>}
+      {checked && <div className="mt-2 pl-1">{children}</div>}
     </div>
   );
 }
@@ -124,28 +124,28 @@ function ObjectPanel() {
 
   if (activePanel === "assets") {
     return (
-      <div className="flex gap-6">
+      <div className="flex gap-8">
         {/* SVG Upload */}
-        <div className="w-52 flex-shrink-0">
+        <div className="w-56 flex-shrink-0">
           <SectionLabel label="SVG File" />
-          <label className="flex flex-col items-center justify-center gap-2 w-full h-24 border border-dashed border-white/[0.1] rounded-xl cursor-pointer hover:border-blue-500/50 hover:bg-blue-950/10 transition-all group">
+          <label className="flex flex-col items-center justify-center gap-2.5 w-full h-28 border border-dashed border-white/[0.1] rounded-xl cursor-pointer hover:border-blue-500/50 hover:bg-blue-950/10 transition-all group">
             <input type="file" accept=".svg" className="hidden" onChange={handleSvgUpload} />
-            <Upload size={16} className="text-slate-500 group-hover:text-blue-400 transition-colors" />
-            <p className="text-[10px] text-blue-400 font-medium">SVG 업로드</p>
+            <Upload size={18} className="text-slate-500 group-hover:text-blue-400 transition-colors" />
+            <p className="text-[11px] text-blue-400 font-medium">SVG 업로드</p>
           </label>
           {svg.name && (
-            <div className="flex items-center gap-2 p-2 bg-blue-950/20 border border-blue-900/30 rounded-lg mt-2">
-              <FileText size={11} className="text-blue-400 flex-shrink-0" />
-              <span className="text-[10px] text-blue-300 truncate flex-1">{svg.name}</span>
+            <div className="flex items-center gap-2.5 p-2.5 bg-blue-950/20 border border-blue-900/30 rounded-lg mt-2.5">
+              <FileText size={12} className="text-blue-400 flex-shrink-0" />
+              <span className="text-[11px] text-blue-300 truncate flex-1">{svg.name}</span>
               <button onClick={() => setSvg({ url: "/globe.svg", name: "globe.svg" })} className="text-slate-600 hover:text-red-400 transition-colors">
-                <X size={10} />
+                <X size={11} />
               </button>
             </div>
           )}
         </div>
 
         {/* Auto rotate */}
-        <div className="w-40 flex-shrink-0">
+        <div className="w-44 flex-shrink-0">
           <SectionLabel label="Options" />
           <SwitchRow id="svg-autorotate" label="Auto Rotate" checked={svg.autoRotate} onCheckedChange={(v) => setSvg({ autoRotate: v })} />
         </div>
@@ -155,18 +155,18 @@ function ObjectPanel() {
 
   // Text tab
   return (
-    <div className="flex gap-6">
-      <div className="w-52 flex-shrink-0">
+    <div className="flex gap-8">
+      <div className="w-56 flex-shrink-0">
         <SectionLabel label="Text Content" />
         <textarea
           value={text.content}
           onChange={(e) => setText({ content: e.target.value })}
           placeholder="텍스트 입력…"
           rows={3}
-          className="w-full bg-white/[0.04] border border-white/[0.08] text-slate-200 text-[12px] rounded-xl px-3 py-2.5 outline-none focus:border-blue-500/60 resize-none placeholder:text-slate-600 transition-colors leading-relaxed"
+          className="w-full bg-white/[0.04] border border-white/[0.08] text-slate-200 text-[13px] rounded-xl px-3.5 py-3 outline-none focus:border-blue-500/60 resize-none placeholder:text-slate-600 transition-colors leading-relaxed"
         />
       </div>
-      <div className="w-44 flex-shrink-0">
+      <div className="w-48 flex-shrink-0">
         <SectionLabel label="Font Family" />
         <select value={text.fontFamily} onChange={(e) => {
           const name = e.target.value;
@@ -174,19 +174,19 @@ function ObjectPanel() {
           const path = variants.find((v) => v.label === "Bold")?.path ?? variants[0]?.path ?? "";
           setText({ fontFamily: name, fontVariant: path });
         }}
-          className="w-full bg-white/[0.04] border border-white/[0.08] text-slate-200 text-[11px] rounded-xl px-3 py-2 outline-none focus:border-blue-500/60 transition-colors appearance-none mb-3">
+          className="w-full bg-white/[0.04] border border-white/[0.08] text-slate-200 text-[12px] rounded-xl px-3.5 py-2.5 outline-none focus:border-blue-500/60 transition-colors appearance-none mb-3">
           {FONTS.map((f) => <option key={f.name} value={f.name} className="bg-[#0e1117]">{f.name}</option>)}
         </select>
-        <div className="grid grid-cols-2 gap-1.5">
+        <div className="grid grid-cols-2 gap-2">
           {getFontVariants(text.fontFamily).map((v) => (
             <button key={v.path} onClick={() => setText({ fontVariant: v.path })}
-              className={`py-1.5 rounded-lg text-[10px] font-semibold transition-all ${text.fontVariant === v.path ? "bg-blue-600 text-white" : "bg-white/[0.04] text-slate-400 border border-white/[0.06] hover:bg-white/[0.08]"}`}>
+              className={`py-2 rounded-xl text-[11px] font-semibold transition-all ${text.fontVariant === v.path ? "bg-blue-600 text-white" : "bg-white/[0.04] text-slate-400 border border-white/[0.06] hover:bg-white/[0.08]"}`}>
               {v.label}
             </button>
           ))}
         </div>
       </div>
-      <div className="w-36 flex-shrink-0">
+      <div className="w-40 flex-shrink-0">
         <SectionLabel label="Options" />
         <SwitchRow id="text-visible" label="Show Text" checked={text.visible} onCheckedChange={(v) => setText({ visible: v })} />
       </div>
@@ -213,12 +213,12 @@ function MaterialPanel() {
 
   if (activePanel === "assets") {
     return (
-      <div className="flex gap-6">
-        <div className="w-44 flex-shrink-0">
+      <div className="flex gap-8">
+        <div className="w-48 flex-shrink-0">
           <SectionLabel label="Color" />
           <ColorRow label="Base Color" value={svg.color} onChange={(v) => setSvg({ color: v })} />
         </div>
-        <div className="w-44 flex-shrink-0">
+        <div className="w-48 flex-shrink-0">
           <SectionLabel label="PBR" />
           <SliderRow label="Metalness" value={svg.metalness} min={0} max={1} step={0.01} onChange={(v) => setSvg({ metalness: v })} />
           <SliderRow label="Roughness" value={svg.roughness} min={0} max={1} step={0.01} onChange={(v) => setSvg({ roughness: v })} />
@@ -229,23 +229,23 @@ function MaterialPanel() {
 
   // Text material
   return (
-    <div className="flex gap-6">
+    <div className="flex gap-8">
       {/* Preset */}
       <div className="flex-shrink-0">
         <SectionLabel label="Preset" />
-        <div className="grid grid-cols-3 gap-1.5">
+        <div className="grid grid-cols-3 gap-2">
           {TEXT_MATERIAL_TYPES.map(({ key, label, desc }) => (
             <button key={key} onClick={() => setText({ materialType: key })}
-              className={`flex flex-col items-start px-2.5 py-2 rounded-xl text-left transition-all w-[80px] ${text.materialType === key ? "bg-blue-600/30 border border-blue-500/50" : "bg-white/[0.04] border border-white/[0.06] hover:bg-white/[0.08]"}`}>
-              <span className={`text-[11px] font-semibold ${text.materialType === key ? "text-blue-300" : "text-slate-300"}`}>{label}</span>
-              <span className="text-[9px] text-slate-600 mt-0.5">{desc}</span>
+              className={`flex flex-col items-start px-3 py-2.5 rounded-xl text-left transition-all w-[88px] ${text.materialType === key ? "bg-blue-600/30 border border-blue-500/50" : "bg-white/[0.04] border border-white/[0.06] hover:bg-white/[0.08]"}`}>
+              <span className={`text-[12px] font-semibold ${text.materialType === key ? "text-blue-300" : "text-slate-300"}`}>{label}</span>
+              <span className="text-[10px] text-slate-600 mt-0.5">{desc}</span>
             </button>
           ))}
         </div>
       </div>
 
       {/* Colors */}
-      <div className="w-44 flex-shrink-0">
+      <div className="w-48 flex-shrink-0">
         <SectionLabel label="Color" />
         <ColorRow label="Base" value={text.color} onChange={(v) => setText({ color: v })} />
         {(text.materialType === "neon" || text.materialType === "holographic" || text.materialType === "standard") && (
@@ -258,7 +258,7 @@ function MaterialPanel() {
 
       {/* PBR */}
       {(text.materialType === "standard" || text.materialType === "metallic") && (
-        <div className="w-40 flex-shrink-0">
+        <div className="w-48 flex-shrink-0">
           <SectionLabel label="PBR" />
           <SliderRow label="Metalness" value={text.metalness} min={0} max={1} step={0.01} onChange={(v) => setText({ metalness: v })} />
           <SliderRow label="Roughness" value={text.roughness} min={0} max={1} step={0.01} onChange={(v) => setText({ roughness: v })} />
@@ -266,7 +266,7 @@ function MaterialPanel() {
       )}
 
       {text.materialType !== "glass" && (
-        <div className="w-36 flex-shrink-0">
+        <div className="w-44 flex-shrink-0">
           <SectionLabel label="Opacity" />
           <SliderRow label="Opacity" value={text.opacity} min={0} max={1} step={0.01} onChange={(v) => setText({ opacity: v })} />
         </div>
@@ -285,8 +285,8 @@ function GeometryPanel() {
 
   if (activePanel === "assets") {
     return (
-      <div className="flex gap-6">
-        <div className="w-52 flex-shrink-0">
+      <div className="flex gap-8">
+        <div className="w-56 flex-shrink-0">
           <SectionLabel label="Extrude" />
           <SliderRow label="Depth" value={svg.depth} min={0.5} max={40} step={0.5} onChange={(v) => setSvg({ depth: v })} />
         </div>
@@ -295,18 +295,18 @@ function GeometryPanel() {
   }
 
   return (
-    <div className="flex gap-6">
-      <div className="w-44 flex-shrink-0">
+    <div className="flex gap-8">
+      <div className="w-48 flex-shrink-0">
         <SectionLabel label="Shape" />
         <SliderRow label="Size" value={text.size} min={0.1} max={5} step={0.05} onChange={(v) => setText({ size: v })} />
         <SliderRow label="Depth" value={text.depth} min={0} max={1} step={0.01} onChange={(v) => setText({ depth: v })} />
       </div>
-      <div className="w-44 flex-shrink-0">
+      <div className="w-48 flex-shrink-0">
         <SectionLabel label="Spacing" />
         <SliderRow label="Letter Spacing" value={text.letterSpacing} min={-0.5} max={1} step={0.01} onChange={(v) => setText({ letterSpacing: v })} />
         <SliderRow label="Position Y" value={text.positionY} min={-5} max={5} step={0.05} onChange={(v) => setText({ positionY: v })} />
       </div>
-      <div className="w-44 flex-shrink-0">
+      <div className="w-48 flex-shrink-0">
         <SectionLabel label="Bevel" />
         <SwitchRow id="bevel" label="Enabled" checked={text.bevelEnabled} onCheckedChange={(v) => setText({ bevelEnabled: v })}>
           <SliderRow label="Thickness" value={text.bevelThickness} min={0} max={0.2} step={0.002} onChange={(v) => setText({ bevelThickness: v })} />
@@ -330,14 +330,14 @@ function EnvironmentPanel() {
   }, [setBg]);
 
   return (
-    <div className="flex gap-6">
+    <div className="flex gap-8">
       {/* Background */}
-      <div className="w-52 flex-shrink-0">
+      <div className="w-56 flex-shrink-0">
         <SectionLabel label="Background" />
-        <div className="grid grid-cols-3 gap-1.5 mb-3">
+        <div className="grid grid-cols-3 gap-2 mb-4">
           {(["solid", "gradient", "image"] as const).map((t) => (
             <button key={t} onClick={() => setBg({ type: t })}
-              className={`py-1.5 rounded-lg text-[10px] font-semibold capitalize transition-all ${bg.type === t ? "bg-blue-600 text-white" : "bg-white/[0.04] text-slate-400 border border-white/[0.06] hover:bg-white/[0.08]"}`}>
+              className={`py-2 rounded-xl text-[11px] font-semibold capitalize transition-all ${bg.type === t ? "bg-blue-600 text-white" : "bg-white/[0.04] text-slate-400 border border-white/[0.06] hover:bg-white/[0.08]"}`}>
               {t}
             </button>
           ))}
@@ -352,30 +352,30 @@ function EnvironmentPanel() {
           </>
         )}
         {bg.type === "image" && (
-          <label className="flex flex-col items-center justify-center gap-1.5 w-full h-16 border border-dashed border-white/[0.08] rounded-xl cursor-pointer hover:border-blue-500/40 transition-all">
+          <label className="flex flex-col items-center justify-center gap-2 w-full h-20 border border-dashed border-white/[0.08] rounded-xl cursor-pointer hover:border-blue-500/40 transition-all">
             <input type="file" accept="image/*" className="hidden" onChange={handleImageUpload} />
-            <Upload size={13} className="text-slate-600" />
-            <span className="text-[9px] text-slate-600">이미지 업로드</span>
+            <Upload size={15} className="text-slate-600" />
+            <span className="text-[10px] text-slate-600">이미지 업로드</span>
           </label>
         )}
       </div>
 
       {/* Ambient */}
-      <div className="w-44 flex-shrink-0">
+      <div className="w-48 flex-shrink-0">
         <SectionLabel label="Ambient Light" />
         <SliderRow label="Intensity" value={lights.ambientIntensity} min={0} max={3} step={0.01} onChange={(v) => setLights({ ambientIntensity: v })} />
         <ColorRow label="Color" value={lights.ambientColor} onChange={(v) => setLights({ ambientColor: v })} />
       </div>
 
       {/* Directional */}
-      <div className="w-44 flex-shrink-0">
+      <div className="w-48 flex-shrink-0">
         <SectionLabel label="Directional Light" />
         <SliderRow label="Intensity" value={lights.directionalIntensity} min={0} max={5} step={0.01} onChange={(v) => setLights({ directionalIntensity: v })} />
         <ColorRow label="Color" value={lights.directionalColor} onChange={(v) => setLights({ directionalColor: v })} />
       </div>
 
       {/* Point */}
-      <div className="w-44 flex-shrink-0">
+      <div className="w-48 flex-shrink-0">
         <SectionLabel label="Point Light" />
         <SliderRow label="Intensity" value={lights.pointIntensity} min={0} max={5} step={0.01} onChange={(v) => setLights({ pointIntensity: v })} />
         <ColorRow label="Color" value={lights.pointColor} onChange={(v) => setLights({ pointColor: v })} />
@@ -390,8 +390,8 @@ function EffectsPanel() {
   const setPP = useSetActivePostProcessing();
 
   return (
-    <div className="flex gap-6">
-      <div className="w-44 flex-shrink-0">
+    <div className="flex gap-8">
+      <div className="w-48 flex-shrink-0">
         <SectionLabel label="Bloom" />
         <SwitchRow id="bloom" label="Enabled" checked={pp.bloomEnabled} onCheckedChange={(v) => setPP({ bloomEnabled: v })}>
           <SliderRow label="Intensity" value={pp.bloomIntensity} min={0} max={3} step={0.01} onChange={(v) => setPP({ bloomIntensity: v })} />
@@ -400,7 +400,7 @@ function EffectsPanel() {
         </SwitchRow>
       </div>
 
-      <div className="w-44 flex-shrink-0">
+      <div className="w-48 flex-shrink-0">
         <SectionLabel label="Vignette" />
         <SwitchRow id="vignette" label="Enabled" checked={pp.vignetteEnabled} onCheckedChange={(v) => setPP({ vignetteEnabled: v })}>
           <SliderRow label="Offset" value={pp.vignetteOffset} min={0} max={1} step={0.01} onChange={(v) => setPP({ vignetteOffset: v })} />
@@ -408,7 +408,7 @@ function EffectsPanel() {
         </SwitchRow>
       </div>
 
-      <div className="w-44 flex-shrink-0">
+      <div className="w-48 flex-shrink-0">
         <SectionLabel label="SSAO" />
         <SwitchRow id="ssao" label="Enabled" checked={pp.ssaoEnabled} onCheckedChange={(v) => setPP({ ssaoEnabled: v })}>
           <SliderRow label="Intensity" value={pp.ssaoIntensity} min={0} max={100} step={1} onChange={(v) => setPP({ ssaoIntensity: v })} />
@@ -416,7 +416,7 @@ function EffectsPanel() {
         </SwitchRow>
       </div>
 
-      <div className="w-44 flex-shrink-0">
+      <div className="w-48 flex-shrink-0">
         <SectionLabel label="Film Noise" />
         <SwitchRow id="noise" label="Enabled" checked={pp.noiseEnabled} onCheckedChange={(v) => setPP({ noiseEnabled: v })}>
           <SliderRow label="Opacity" value={pp.noiseOpacity} min={0} max={0.5} step={0.005} onChange={(v) => setPP({ noiseOpacity: v })} />
@@ -450,13 +450,13 @@ function ExportPanel({ exportRef }: { exportRef: React.RefObject<ExportRef | nul
   }, [exportRef, format, setIsExporting]);
 
   return (
-    <div className="flex gap-6 items-start">
+    <div className="flex gap-8 items-start">
       <div className="flex-shrink-0">
         <SectionLabel label="Format" />
-        <div className="flex gap-1.5">
+        <div className="flex gap-2">
           {(["png", "jpg"] as const).map((f) => (
             <button key={f} onClick={() => setFormat(f)}
-              className={`px-5 py-2 rounded-xl text-[11px] font-semibold uppercase transition-all ${format === f ? "bg-blue-600 text-white" : "bg-white/[0.04] text-slate-400 border border-white/[0.06] hover:bg-white/[0.08]"}`}>
+              className={`px-6 py-2.5 rounded-xl text-[12px] font-semibold uppercase transition-all ${format === f ? "bg-blue-600 text-white" : "bg-white/[0.04] text-slate-400 border border-white/[0.06] hover:bg-white/[0.08]"}`}>
               {f}
             </button>
           ))}
@@ -466,8 +466,8 @@ function ExportPanel({ exportRef }: { exportRef: React.RefObject<ExportRef | nul
       <div className="flex-shrink-0">
         <SectionLabel label="Export" />
         <button onClick={handleExport} disabled={isExporting}
-          className="flex items-center gap-2 px-6 py-2 bg-blue-600 hover:bg-blue-500 disabled:opacity-40 text-white text-[12px] font-semibold rounded-xl transition-all">
-          <Download size={13} />
+          className="flex items-center gap-2.5 px-7 py-2.5 bg-blue-600 hover:bg-blue-500 disabled:opacity-40 text-white text-[13px] font-semibold rounded-xl transition-all">
+          <Download size={14} />
           {isExporting ? "Rendering…" : "Export Image"}
         </button>
       </div>
@@ -512,14 +512,14 @@ export default function BottomBar({ exportRef }: BottomBarProps) {
         className={`transition-all duration-200 origin-bottom ${panelOpen ? "opacity-100 translate-y-0" : "opacity-0 translate-y-2 pointer-events-none"}`}
       >
         {panelOpen && (
-          <div className="bg-[#0e1117]/95 backdrop-blur-xl border border-white/[0.08] rounded-2xl shadow-2xl shadow-black/60 px-5 py-4 max-w-[90vw] overflow-x-auto scrollbar-hide">
+          <div className="bg-[#0e1117]/95 backdrop-blur-xl border border-white/[0.08] rounded-2xl shadow-2xl shadow-black/60 px-7 py-5 max-w-[90vw] overflow-x-auto scrollbar-hide">
             {/* Close + title */}
-            <div className="flex items-center justify-between mb-3">
-              <span className="text-[11px] font-semibold text-slate-300 uppercase tracking-widest">
+            <div className="flex items-center justify-between mb-5">
+              <span className="text-[11px] font-semibold text-slate-400 uppercase tracking-widest">
                 {TOOLS.find((t) => t.id === activeTool)?.label}
               </span>
-              <button onClick={() => setActiveTool(null)} className="text-slate-600 hover:text-slate-400 transition-colors ml-6">
-                <ChevronDown size={14} />
+              <button onClick={() => setActiveTool(null)} className="text-slate-600 hover:text-slate-300 transition-colors ml-8">
+                <ChevronDown size={15} />
               </button>
             </div>
             {activeTool === "object" && <ObjectPanel />}
@@ -533,26 +533,26 @@ export default function BottomBar({ exportRef }: BottomBarProps) {
       </div>
 
       {/* Bottom toolbar */}
-      <div className="flex items-center gap-1 px-2 py-2 bg-[#0e1117]/95 backdrop-blur-xl border border-white/[0.08] rounded-2xl shadow-2xl shadow-black/60">
+      <div className="flex items-center gap-1.5 px-3 py-2.5 bg-[#0e1117]/95 backdrop-blur-xl border border-white/[0.08] rounded-2xl shadow-2xl shadow-black/60">
         {/* Mode toggle — Assets / Text */}
-        <div className="flex items-center gap-0.5 bg-white/[0.04] rounded-xl p-1 mr-2">
+        <div className="flex items-center gap-1 bg-white/[0.04] rounded-xl p-1 mr-2">
           <button
             onClick={() => setActivePanel("assets")}
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[11px] font-semibold transition-all ${activePanel === "assets" ? "bg-blue-600 text-white shadow-sm" : "text-slate-500 hover:text-slate-300"}`}
+            className={`flex items-center gap-1.5 px-3.5 py-2 rounded-lg text-[11px] font-semibold transition-all ${activePanel === "assets" ? "bg-blue-600 text-white shadow-sm" : "text-slate-500 hover:text-slate-300"}`}
           >
-            <ImageIcon size={11} />
+            <ImageIcon size={12} />
             SVG
           </button>
           <button
             onClick={() => setActivePanel("text")}
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[11px] font-semibold transition-all ${activePanel === "text" ? "bg-blue-600 text-white shadow-sm" : "text-slate-500 hover:text-slate-300"}`}
+            className={`flex items-center gap-1.5 px-3.5 py-2 rounded-lg text-[11px] font-semibold transition-all ${activePanel === "text" ? "bg-blue-600 text-white shadow-sm" : "text-slate-500 hover:text-slate-300"}`}
           >
-            <Type size={11} />
+            <Type size={12} />
             Text
           </button>
         </div>
 
-        <div className="w-px h-5 bg-white/[0.08] mx-1" />
+        <div className="w-px h-6 bg-white/[0.08] mx-1" />
 
         {/* Tool buttons */}
         {TOOLS.map(({ id, icon: Icon, label }) => (
@@ -560,14 +560,14 @@ export default function BottomBar({ exportRef }: BottomBarProps) {
             key={id}
             onClick={() => handleToolClick(id)}
             title={label}
-            className={`flex flex-col items-center gap-1 px-3 py-2 rounded-xl transition-all ${
+            className={`flex flex-col items-center gap-1.5 px-4 py-2.5 rounded-xl transition-all ${
               activeTool === id
                 ? "bg-blue-600/20 text-blue-400 border border-blue-500/40"
                 : "text-slate-500 hover:text-slate-300 hover:bg-white/[0.05]"
             }`}
           >
-            <Icon size={15} />
-            <span className="text-[9px] font-medium">{label}</span>
+            <Icon size={16} />
+            <span className="text-[10px] font-medium">{label}</span>
           </button>
         ))}
       </div>
