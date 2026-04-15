@@ -343,12 +343,63 @@ const ExportHelper = forwardRef<ExportRef>(function ExportHelper(_, ref) {
     exportImage(format: "png" | "jpg", resolution: number) {
       const size = new THREE.Vector2();
       gl.getSize(size);
-      gl.setSize(size.x * resolution, size.y * resolution, false);
+      const w = size.x * resolution;
+      const h = size.y * resolution;
+
+      // 1) WebGL 렌더
+      gl.setSize(w, h, false);
       gl.setPixelRatio(window.devicePixelRatio * resolution);
       gl.render(scene, camera);
-      const dataUrl = gl.domElement.toDataURL(format === "jpg" ? "image/jpeg" : "image/png", 0.95);
+
+      // 2) 합성용 2D Canvas
+      const composite = document.createElement("canvas");
+      composite.width = w;
+      composite.height = h;
+      const ctx = composite.getContext("2d")!;
+
+      // 3) 배경을 Canvas 에 직접 그림 (BgLayer와 동일한 로직)
+      const bg: BackgroundState = (window as any).__ZES_EXPORT_BG__;
+      if (bg) {
+        if (bg.type === "solid") {
+          ctx.fillStyle = bg.solidColor;
+          ctx.fillRect(0, 0, w, h);
+        } else if (bg.type === "gradient") {
+          const grad = ctx.createLinearGradient(0, 0, 0, h);
+          grad.addColorStop(0, bg.gradientFrom);
+          grad.addColorStop(1, bg.gradientTo);
+          ctx.fillStyle = grad;
+          ctx.fillRect(0, 0, w, h);
+        } else if (bg.type === "image" && bg.imageUrl) {
+          // 이미지 배경은 미리 로드돼 있다고 가정
+          const img = new Image();
+          img.src = bg.imageUrl;
+          // 이미 로드된 경우만 동기 처리
+          if (img.complete) {
+            ctx.drawImage(img, 0, 0, w, h);
+          } else {
+            ctx.fillStyle = "#020818";
+            ctx.fillRect(0, 0, w, h);
+          }
+        } else {
+          ctx.fillStyle = "#020818";
+          ctx.fillRect(0, 0, w, h);
+        }
+      } else {
+        ctx.fillStyle = "#020818";
+        ctx.fillRect(0, 0, w, h);
+      }
+
+      // 4) WebGL Canvas 를 위에 합성
+      ctx.drawImage(gl.domElement, 0, 0, w, h);
+
+      // 5) 내보내기
+      const mimeType = format === "jpg" ? "image/jpeg" : "image/png";
+      const dataUrl = composite.toDataURL(mimeType, 0.95);
+
+      // 6) 크기 복원
       gl.setSize(size.x, size.y, false);
       gl.setPixelRatio(window.devicePixelRatio);
+
       const a = document.createElement("a");
       a.href = dataUrl;
       a.download = `render.${format}`;
@@ -385,6 +436,11 @@ interface TabCanvasProps {
 }
 
 function TabCanvas({ lights, pp, bg, exportRef, children }: TabCanvasProps) {
+  // export 시 배경 합성에 사용할 수 있도록 현재 bg를 전역에 노출
+  useEffect(() => {
+    (window as any).__ZES_EXPORT_BG__ = bg;
+  }, [bg]);
+
   return (
     <div className="absolute inset-0">
       <BgLayer bg={bg} />
