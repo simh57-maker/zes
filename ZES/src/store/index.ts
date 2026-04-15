@@ -16,7 +16,7 @@ export const defaultSvg = {
 export const defaultText = {
   content: "ZES",
   fontFamily: "Roboto",
-  fontVariant: "/asset/font/Roboto/static/Roboto-Bold.ttf",
+  fontVariant: "/asset/font-json/Roboto-Bold.json",
   size: 1,
   depth: 0.2,
   bevelEnabled: true,

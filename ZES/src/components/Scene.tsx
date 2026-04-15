@@ -166,8 +166,8 @@ function SVGLoader3D() {
 }
 
 // ─── Text 3D ──────────────────────────────────────────────────────────────────
-// drei Text3D/useFont는 suspend-react 캐시 키 불일치 문제가 있어서
-// three-stdlib의 Font + TextGeometry를 직접 사용
+// 방식: 미리 변환된 typeface.js JSON(/asset/font-json/*.json)을 fetch로 로드
+//       → three-stdlib Font → TextGeometry. opentype.js 런타임 변환 없음.
 
 function buildTextMaterial(
   type: string,
@@ -201,143 +201,52 @@ function buildTextMaterial(
   }
 }
 
-// opentype.js → drei FontData 포맷 변환 (string path)
-function pathToTroikaOutline(commands: any[], scale: number): string {
-  const r = (v: number) => String(Math.round(v * scale));
-  const rn = (v: number) => String(Math.round(-v * scale));
-  let d = "";
-  for (const cmd of commands) {
-    switch (cmd.type) {
-      case "M": d += ` M ${r(cmd.x)} ${rn(cmd.y)}`; break;
-      case "L": d += ` L ${r(cmd.x)} ${rn(cmd.y)}`; break;
-      case "C": d += ` C ${r(cmd.x1)} ${rn(cmd.y1)} ${r(cmd.x2)} ${rn(cmd.y2)} ${r(cmd.x)} ${rn(cmd.y)}`; break;
-      case "Q": d += ` Q ${r(cmd.x1)} ${rn(cmd.y1)} ${r(cmd.x)} ${rn(cmd.y)}`; break;
-      case "Z": d += " Z"; break;
-    }
-  }
-  return d.trim();
+// JSON URL → Font 캐시
+const jsonFontCache = new Map<string, Font>();
+const jsonFontLoading = new Set<string>();
+
+async function loadJsonFont(jsonUrl: string): Promise<Font> {
+  const data = await fetch(jsonUrl).then((r) => r.json());
+  return new Font(data);
 }
 
-// ─── Font cache ───────────────────────────────────────────────────────────────
-// 구조: url → { opentypeFont, upem, scale, glyphs(캐시), fontData, threeFont }
-// 글리프는 필요한 문자만 on-demand 추출 → 한글 11172자 사전 변환 제거
-
-interface FontEntry {
-  opentypeFont: any;
-  upem: number;
-  scale: number;
-  glyphs: Record<string, any>;
-  fontData: any;    // three-stdlib FontData shape (glyphs는 공유 참조)
-  threeFont: Font;
-}
-
-const fontCache = new Map<string, FontEntry>();
-const fontLoadingSet = new Set<string>();
-
-function extractGlyph(entry: FontEntry, ch: string): boolean {
-  if (entry.glyphs[ch]) return true;
-  const g = entry.opentypeFont.charToGlyph(ch);
-  if (!g || g.index === 0) return false;
-  const ha = Math.round((g.advanceWidth ?? 0) * entry.scale);
-  const outline = pathToTroikaOutline(g.getPath(0, 0, entry.upem).commands, entry.scale);
-  entry.glyphs[ch] = { _cachedOutline: outline.split(" "), ha, o: outline };
-  return true;
-}
-
-async function loadFont(url: string): Promise<FontEntry> {
-  const { parse } = await import("opentype.js");
-  const buf = await fetch(url).then((r) => r.arrayBuffer());
-  const opentypeFont = parse(buf);
-  const upem = opentypeFont.unitsPerEm || 1000;
-  const scale = 1000 / upem;
-  const glyphs: Record<string, any> = {};
-
-  // ASCII 가시 문자만 사전 추출 (95자 — 가볍고 빠름)
-  for (let cp = 32; cp <= 126; cp++) {
-    const ch = String.fromCodePoint(cp);
-    const g = opentypeFont.charToGlyph(ch);
-    if (!g || g.index === 0) continue;
-    const ha = Math.round((g.advanceWidth ?? 0) * scale);
-    const outline = pathToTroikaOutline(g.getPath(0, 0, upem).commands, scale);
-    glyphs[ch] = { _cachedOutline: outline.split(" "), ha, o: outline };
-  }
-
-  const fontData = {
-    familyName: opentypeFont.names?.fontFamily?.en ?? "Custom",
-    resolution: 1000,
-    boundingBox: {
-      yMin: Math.round((opentypeFont.descender ?? -200) * scale),
-      yMax: Math.round((opentypeFont.ascender ?? 800) * scale),
-    },
-    underlineThickness: 50,
-    glyphs, // 공유 참조 — extractGlyph가 여기에 직접 추가
-  };
-
-  const threeFont = new Font(fontData);
-  return { opentypeFont, upem, scale, glyphs, fontData, threeFont };
-}
-
-// 텍스트에 필요한 글리프를 on-demand로 확보하고 Font 인스턴스를 갱신
-// 새 문자가 추가될 때만 Font를 재생성해 TextGeometry 재빌드 유발
-function ensureGlyphs(entry: FontEntry, text: string): Font {
-  let added = false;
-  for (const ch of text) {
-    if (ch === " " || ch === "\n") continue;
-    if (!entry.glyphs[ch]) {
-      const ok = extractGlyph(entry, ch);
-      if (ok) added = true;
-    }
-  }
-  if (added) {
-    // fontData.glyphs는 공유 참조이므로 이미 최신 — Font만 재생성
-    entry.threeFont = new Font(entry.fontData);
-  }
-  return entry.threeFont;
-}
-
-// FontLoader는 Canvas 밖(Scene)에서 호출 — display:none 영향 없음
-// 로드 완료 시 store.fontReadyUrl 업데이트 → Text3DMesh 자동 리렌더
+// Canvas 밖에서 JSON 폰트를 로드하고 store에 완료 신호
 export function FontPreloader() {
-  const fontVariant = useEditorStore((s) => s.text.fontVariant);
+  const jsonUrl = useEditorStore((s) => s.text.fontVariant);
   const setFontReadyUrl = useEditorStore((s) => s.setFontReadyUrl);
 
   useEffect(() => {
-    if (!fontVariant) return;
-    if (fontCache.has(fontVariant)) {
-      setFontReadyUrl(fontVariant);
+    if (!jsonUrl) return;
+    if (jsonFontCache.has(jsonUrl)) {
+      setFontReadyUrl(jsonUrl);
       return;
     }
-    if (fontLoadingSet.has(fontVariant)) return;
-    fontLoadingSet.add(fontVariant);
-    loadFont(fontVariant)
-      .then((entry) => {
-        fontCache.set(fontVariant, entry);
-        fontLoadingSet.delete(fontVariant);
-        setFontReadyUrl(fontVariant); // ← store 업데이트 → 전체 구독자 리렌더
+    if (jsonFontLoading.has(jsonUrl)) return;
+    jsonFontLoading.add(jsonUrl);
+    loadJsonFont(jsonUrl)
+      .then((font) => {
+        jsonFontCache.set(jsonUrl, font);
+        jsonFontLoading.delete(jsonUrl);
+        setFontReadyUrl(jsonUrl);
       })
-      .catch(() => { fontLoadingSet.delete(fontVariant); });
-  }, [fontVariant, setFontReadyUrl]);
+      .catch((err) => {
+        console.error("[FontPreloader] failed:", jsonUrl, err);
+        jsonFontLoading.delete(jsonUrl);
+      });
+  }, [jsonUrl, setFontReadyUrl]);
 
-  return null; // DOM 렌더 없음
+  return null;
 }
 
-// Canvas 내부 — store.fontReadyUrl을 구독해서 로드 완료를 감지
+// Canvas 내부 — fontReadyUrl 구독으로 로드 완료 즉시 geometry 빌드
 function Text3DMesh() {
   const text = useEditorStore((s) => s.text);
   const fontReadyUrl = useEditorStore((s) => s.fontReadyUrl);
   const meshRef = useRef<THREE.Mesh>(null);
 
-  // fontReadyUrl이 현재 fontVariant와 일치할 때만 entry 사용
-  const entry = (fontReadyUrl === text.fontVariant)
-    ? fontCache.get(text.fontVariant) ?? null
+  const threeFont = fontReadyUrl === text.fontVariant
+    ? jsonFontCache.get(text.fontVariant) ?? null
     : null;
-
-  // 필요한 글리프 확보 + Font 최신화
-  const threeFont = useMemo(() => {
-    if (!entry) return null;
-    return ensureGlyphs(entry, text.content);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [entry, text.content]);
 
   const geometry = useMemo(() => {
     if (!threeFont || !text.content.trim()) return null;
@@ -353,15 +262,16 @@ function Text3DMesh() {
         letterSpacing: text.letterSpacing,
       });
       geo.computeBoundingBox();
-      const offset = new THREE.Vector3();
-      geo.boundingBox!.getCenter(offset);
-      geo.translate(-offset.x, -offset.y, -offset.z);
+      const center = new THREE.Vector3();
+      geo.boundingBox!.getCenter(center);
+      geo.translate(-center.x, -center.y, -center.z);
       geo.computeVertexNormals();
       return geo;
-    } catch {
+    } catch (err) {
+      console.error("[Text3DMesh] geometry error:", err);
       return null;
     }
-  }, [threeFont, text.content, text.size, text.depth, text.bevelEnabled, text.bevelThickness, text.bevelSize]);
+  }, [threeFont, text.content, text.size, text.depth, text.bevelEnabled, text.bevelThickness, text.bevelSize, text.letterSpacing]);
 
   const material = useMemo(
     () => buildTextMaterial(text.materialType, text.color, text.emissiveColor, text.emissiveIntensity, text.metalness, text.roughness, text.opacity),
