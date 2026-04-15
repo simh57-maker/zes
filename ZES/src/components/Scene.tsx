@@ -15,8 +15,6 @@ import {
   Environment,
   OrbitControls,
   Center,
-  GizmoHelper,
-  GizmoViewport,
   PerspectiveCamera,
 } from "@react-three/drei";
 import {
@@ -463,9 +461,6 @@ function TabCanvas({ lights, pp, bg, exportRef, children }: TabCanvasProps) {
           {children}
           <ScenePostProcessing pp={pp} />
           <OrbitControls makeDefault enableDamping dampingFactor={0.05} minDistance={1} maxDistance={60} maxPolarAngle={0.9 * Math.PI} />
-          <GizmoHelper alignment="bottom-right" margin={[70, 70]}>
-            <GizmoViewport axisColors={["#ef4444", "#22c55e", "#3b82f6"]} labelColor="white" />
-          </GizmoHelper>
           <ExportHelper ref={exportRef} />
         </Canvas>
       </div>

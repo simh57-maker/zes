@@ -52,12 +52,12 @@ function getFontVariants(name: string) {
 // ─── Shared primitives ────────────────────────────────────────────────────────
 
 function Divider() {
-  return <div className="mx-4 my-1 border-t border-white/[0.06]" />;
+  return <div className="mx-4 my-3 border-t border-white/[0.06]" />;
 }
 
 function SectionLabel({ label }: { label: string }) {
   return (
-    <div className="px-4 pt-4 pb-2">
+    <div className="px-4 pt-2 pb-2.5">
       <span className="text-[10px] font-semibold text-slate-500 uppercase tracking-widest">
         {label}
       </span>
@@ -81,7 +81,7 @@ function SliderRow({
   onChange: (v: number) => void;
 }) {
   return (
-    <div className="px-4 pb-3 space-y-2">
+    <div className="px-4 pb-4 space-y-2">
       <div className="flex justify-between items-center">
         <span className="text-[12px] text-slate-400">{label}</span>
         <span className="text-[11px] text-slate-500 font-mono tabular-nums bg-white/[0.04] px-1.5 py-0.5 rounded-md">
@@ -148,13 +148,10 @@ function AssetsPanel() {
   return (
     <>
       <SectionLabel label="SVG Extrude" />
-      <div className="px-4 pb-3">
+      <div className="px-4 pb-4">
         <label className="flex flex-col items-center justify-center gap-2.5 w-full h-28 border border-dashed border-white/[0.1] rounded-2xl cursor-pointer hover:border-blue-500/50 hover:bg-blue-950/10 transition-all group">
           <input type="file" accept=".svg" className="hidden" onChange={handleFileUpload} />
-          <Upload
-            size={18}
-            className="text-slate-500 group-hover:text-blue-400 transition-colors"
-          />
+          <Upload size={18} className="text-slate-500 group-hover:text-blue-400 transition-colors" />
           <div className="text-center">
             <p className="text-[11px] text-blue-400 font-medium">SVG 파일 업로드</p>
             <p className="text-[10px] text-slate-600 mt-0.5">클릭하여 선택</p>
@@ -163,14 +160,12 @@ function AssetsPanel() {
       </div>
 
       {svg.name && (
-        <div className="px-4 pb-3">
+        <div className="px-4 pb-4">
           <div className="flex items-center gap-2.5 p-3 bg-blue-950/20 border border-blue-900/30 rounded-xl">
             <FileText size={13} className="text-blue-400 flex-shrink-0" />
             <span className="text-[11px] text-blue-300 truncate flex-1">{svg.name}</span>
             <button
-              onClick={() =>
-                setSvg({ url: "/globe.svg", name: "globe.svg" })
-              }
+              onClick={() => setSvg({ url: "/globe.svg", name: "globe.svg" })}
               className="text-slate-600 hover:text-red-400 transition-colors p-0.5"
             >
               <X size={11} />
@@ -181,7 +176,7 @@ function AssetsPanel() {
 
       <Divider />
       <SectionLabel label="Material" />
-      <div className="px-4 pb-3">
+      <div className="px-4 pb-4">
         <div className="flex items-center gap-3 p-3 bg-white/[0.03] rounded-xl border border-white/[0.06]">
           <input
             type="color"
@@ -196,41 +191,15 @@ function AssetsPanel() {
           </div>
         </div>
       </div>
-      <SliderRow
-        label="Metalness"
-        value={svg.metalness}
-        min={0}
-        max={1}
-        step={0.01}
-        onChange={(v) => setSvg({ metalness: v })}
-      />
-      <SliderRow
-        label="Roughness"
-        value={svg.roughness}
-        min={0}
-        max={1}
-        step={0.01}
-        onChange={(v) => setSvg({ roughness: v })}
-      />
+      <SliderRow label="Metalness" value={svg.metalness} min={0} max={1} step={0.01} onChange={(v) => setSvg({ metalness: v })} />
+      <SliderRow label="Roughness" value={svg.roughness} min={0} max={1} step={0.01} onChange={(v) => setSvg({ roughness: v })} />
 
       <Divider />
       <SectionLabel label="Geometry" />
-      <SliderRow
-        label="Depth"
-        value={svg.depth}
-        min={0.5}
-        max={40}
-        step={0.5}
-        onChange={(v) => setSvg({ depth: v })}
-      />
+      <SliderRow label="Depth" value={svg.depth} min={0.5} max={40} step={0.5} onChange={(v) => setSvg({ depth: v })} />
 
       <Divider />
-      <SwitchRow
-        id="svg-autorotate"
-        label="Auto Rotate"
-        checked={svg.autoRotate}
-        onCheckedChange={(v) => setSvg({ autoRotate: v })}
-      />
+      <SwitchRow id="svg-autorotate" label="Auto Rotate" checked={svg.autoRotate} onCheckedChange={(v) => setSvg({ autoRotate: v })} />
     </>
   );
 }
@@ -244,7 +213,7 @@ function TextPanel() {
   return (
     <>
       <SectionLabel label="3D Text" />
-      <div className="px-4 pb-3">
+      <div className="px-4 pb-4">
         <textarea
           value={text.content}
           onChange={(e) => setText({ content: e.target.value })}
@@ -280,7 +249,7 @@ function TextPanel() {
       </div>
 
       <SectionLabel label="Weight / Style" />
-      <div className="px-4 pb-3">
+      <div className="px-4 pb-4">
         <div className="grid grid-cols-2 gap-1.5">
           {getFontVariants(text.fontFamily).map((v) => (
             <button
@@ -299,12 +268,7 @@ function TextPanel() {
       </div>
 
       <Divider />
-      <SwitchRow
-        id="text-visible"
-        label="Show Text"
-        checked={text.visible}
-        onCheckedChange={(v) => setText({ visible: v })}
-      />
+      <SwitchRow id="text-visible" label="Show Text" checked={text.visible} onCheckedChange={(v) => setText({ visible: v })} />
     </>
   );
 }
@@ -327,7 +291,7 @@ function BackgroundPanel() {
     <>
       <Divider />
       <SectionLabel label="Background" />
-      <div className="px-4 pb-3">
+      <div className="px-4 pb-4">
         <div className="grid grid-cols-3 gap-1.5">
           {(["solid", "gradient", "image"] as const).map((t) => (
             <button
@@ -454,11 +418,12 @@ export default function LeftPanel() {
       </div>
 
       {/* Panel content */}
-      <div className="flex-1 overflow-y-auto scrollbar-hide pb-2">
-        {activePanel === "assets" && <AssetsPanel />}
-        {activePanel === "text" && <TextPanel />}
-        <BackgroundPanel />
-        <div className="h-4" />
+      <div className="flex-1 overflow-y-auto scrollbar-hide">
+        <div className="pt-2 pb-6">
+          {activePanel === "assets" && <AssetsPanel />}
+          {activePanel === "text" && <TextPanel />}
+          <BackgroundPanel />
+        </div>
       </div>
     </div>
   );

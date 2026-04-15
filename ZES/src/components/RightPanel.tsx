@@ -15,12 +15,12 @@ import {
 // ─── Shared primitives ────────────────────────────────────────────────────────
 
 function Divider() {
-  return <div className="mx-4 my-1 border-t border-white/[0.06]" />;
+  return <div className="mx-4 my-3 border-t border-white/[0.06]" />;
 }
 
 function SectionLabel({ label }: { label: string }) {
   return (
-    <div className="px-4 pt-4 pb-2">
+    <div className="px-4 pt-2 pb-2.5">
       <span className="text-[10px] font-semibold text-slate-500 uppercase tracking-widest">
         {label}
       </span>
@@ -28,13 +28,7 @@ function SectionLabel({ label }: { label: string }) {
   );
 }
 
-function RowLabel({
-  icon,
-  label,
-}: {
-  icon: React.ReactNode;
-  label: string;
-}) {
+function RowLabel({ icon, label }: { icon: React.ReactNode; label: string }) {
   return (
     <div className="flex items-center gap-3 px-4 py-3.5">
       <span className="flex-shrink-0 text-slate-400">{icon}</span>
@@ -61,7 +55,7 @@ function SliderRow({
   unit?: string;
 }) {
   return (
-    <div className="px-4 pb-3 space-y-2">
+    <div className="px-4 pb-4 space-y-2">
       <div className="flex justify-between items-center">
         <span className="text-[12px] text-slate-400">{label}</span>
         <span className="text-[11px] text-slate-500 font-mono tabular-nums bg-white/[0.04] px-1.5 py-0.5 rounded-md">
@@ -95,7 +89,7 @@ function ColorRow({
   onChange: (v: string) => void;
 }) {
   return (
-    <div className="px-4 pb-3">
+    <div className="px-4 pb-4">
       <div className="flex items-center gap-3 p-3 bg-white/[0.03] rounded-xl border border-white/[0.06]">
         <input
           type="color"
@@ -137,7 +131,7 @@ function ToggleSection({
           <Switch.Thumb className="block w-4 h-4 bg-white rounded-full shadow-sm transition-transform translate-x-0.5 data-[state=checked]:translate-x-4" />
         </Switch.Root>
       </div>
-      {checked && <div className="pb-1">{children}</div>}
+      {checked && <div className="pt-1 pb-1">{children}</div>}
     </>
   );
 }
@@ -159,7 +153,9 @@ function CollapsibleSection({
           {title}
         </button>
       </Collapsible.Trigger>
-      <Collapsible.Content>{children}</Collapsible.Content>
+      <Collapsible.Content>
+        <div className="pt-1">{children}</div>
+      </Collapsible.Content>
     </Collapsible.Root>
   );
 }
@@ -176,37 +172,15 @@ function LightingSection() {
       <Divider />
 
       <CollapsibleSection title="Ambient">
-        <SliderRow
-          label="Intensity"
-          value={lights.ambientIntensity}
-          min={0}
-          max={3}
-          step={0.01}
-          onChange={(v) => setLights({ ambientIntensity: v })}
-        />
-        <ColorRow
-          label="Color"
-          value={lights.ambientColor}
-          onChange={(v) => setLights({ ambientColor: v })}
-        />
+        <SliderRow label="Intensity" value={lights.ambientIntensity} min={0} max={3} step={0.01} onChange={(v) => setLights({ ambientIntensity: v })} />
+        <ColorRow label="Color" value={lights.ambientColor} onChange={(v) => setLights({ ambientColor: v })} />
       </CollapsibleSection>
 
       <Divider />
 
       <CollapsibleSection title="Directional">
-        <SliderRow
-          label="Intensity"
-          value={lights.directionalIntensity}
-          min={0}
-          max={5}
-          step={0.01}
-          onChange={(v) => setLights({ directionalIntensity: v })}
-        />
-        <ColorRow
-          label="Color"
-          value={lights.directionalColor}
-          onChange={(v) => setLights({ directionalColor: v })}
-        />
+        <SliderRow label="Intensity" value={lights.directionalIntensity} min={0} max={5} step={0.01} onChange={(v) => setLights({ directionalIntensity: v })} />
+        <ColorRow label="Color" value={lights.directionalColor} onChange={(v) => setLights({ directionalColor: v })} />
         <SliderRow label="X" value={lights.directionalX} min={-20} max={20} step={0.1} onChange={(v) => setLights({ directionalX: v })} />
         <SliderRow label="Y" value={lights.directionalY} min={-20} max={20} step={0.1} onChange={(v) => setLights({ directionalY: v })} />
         <SliderRow label="Z" value={lights.directionalZ} min={-20} max={20} step={0.1} onChange={(v) => setLights({ directionalZ: v })} />
@@ -215,19 +189,8 @@ function LightingSection() {
       <Divider />
 
       <CollapsibleSection title="Point Light" defaultOpen={false}>
-        <SliderRow
-          label="Intensity"
-          value={lights.pointIntensity}
-          min={0}
-          max={5}
-          step={0.01}
-          onChange={(v) => setLights({ pointIntensity: v })}
-        />
-        <ColorRow
-          label="Color"
-          value={lights.pointColor}
-          onChange={(v) => setLights({ pointColor: v })}
-        />
+        <SliderRow label="Intensity" value={lights.pointIntensity} min={0} max={5} step={0.01} onChange={(v) => setLights({ pointIntensity: v })} />
+        <ColorRow label="Color" value={lights.pointColor} onChange={(v) => setLights({ pointColor: v })} />
         <SliderRow label="X" value={lights.pointX} min={-20} max={20} step={0.1} onChange={(v) => setLights({ pointX: v })} />
         <SliderRow label="Y" value={lights.pointY} min={-20} max={20} step={0.1} onChange={(v) => setLights({ pointY: v })} />
         <SliderRow label="Z" value={lights.pointZ} min={-20} max={20} step={0.1} onChange={(v) => setLights({ pointZ: v })} />
@@ -247,12 +210,7 @@ function PostProcessingSection() {
       <RowLabel icon={<Sparkles size={14} />} label="Post Processing" />
       <Divider />
 
-      <ToggleSection
-        id="bloom"
-        label="Bloom"
-        checked={pp.bloomEnabled}
-        onCheckedChange={(v) => setPP({ bloomEnabled: v })}
-      >
+      <ToggleSection id="bloom" label="Bloom" checked={pp.bloomEnabled} onCheckedChange={(v) => setPP({ bloomEnabled: v })}>
         <SliderRow label="Intensity" value={pp.bloomIntensity} min={0} max={3} step={0.01} onChange={(v) => setPP({ bloomIntensity: v })} />
         <SliderRow label="Threshold" value={pp.bloomThreshold} min={0} max={1} step={0.01} onChange={(v) => setPP({ bloomThreshold: v })} />
         <SliderRow label="Smoothing" value={pp.bloomSmoothing} min={0} max={1} step={0.01} onChange={(v) => setPP({ bloomSmoothing: v })} />
@@ -260,54 +218,34 @@ function PostProcessingSection() {
 
       <Divider />
 
-      <ToggleSection
-        id="ssao"
-        label="SSAO"
-        checked={pp.ssaoEnabled}
-        onCheckedChange={(v) => setPP({ ssaoEnabled: v })}
-      >
+      <ToggleSection id="ssao" label="SSAO" checked={pp.ssaoEnabled} onCheckedChange={(v) => setPP({ ssaoEnabled: v })}>
         <SliderRow label="Intensity" value={pp.ssaoIntensity} min={0} max={100} step={1} onChange={(v) => setPP({ ssaoIntensity: v })} />
         <SliderRow label="Radius" value={pp.ssaoRadius} min={0.1} max={20} step={0.1} onChange={(v) => setPP({ ssaoRadius: v })} />
       </ToggleSection>
 
       <Divider />
 
-      <ToggleSection
-        id="vignette"
-        label="Vignette"
-        checked={pp.vignetteEnabled}
-        onCheckedChange={(v) => setPP({ vignetteEnabled: v })}
-      >
+      <ToggleSection id="vignette" label="Vignette" checked={pp.vignetteEnabled} onCheckedChange={(v) => setPP({ vignetteEnabled: v })}>
         <SliderRow label="Offset" value={pp.vignetteOffset} min={0} max={1} step={0.01} onChange={(v) => setPP({ vignetteOffset: v })} />
         <SliderRow label="Darkness" value={pp.vignetteDarkness} min={0} max={1} step={0.01} onChange={(v) => setPP({ vignetteDarkness: v })} />
       </ToggleSection>
 
       <Divider />
 
-      <ToggleSection
-        id="noise"
-        label="Film Noise"
-        checked={pp.noiseEnabled}
-        onCheckedChange={(v) => setPP({ noiseEnabled: v })}
-      >
+      <ToggleSection id="noise" label="Film Noise" checked={pp.noiseEnabled} onCheckedChange={(v) => setPP({ noiseEnabled: v })}>
         <SliderRow label="Opacity" value={pp.noiseOpacity} min={0} max={0.5} step={0.005} onChange={(v) => setPP({ noiseOpacity: v })} />
       </ToggleSection>
 
       <Divider />
 
-      <ToggleSection
-        id="toneMapping"
-        label="Tone Mapping (ACES)"
-        checked={pp.toneMappingEnabled}
-        onCheckedChange={(v) => setPP({ toneMappingEnabled: v })}
-      >
+      <ToggleSection id="toneMapping" label="Tone Mapping (ACES)" checked={pp.toneMappingEnabled} onCheckedChange={(v) => setPP({ toneMappingEnabled: v })}>
         <SliderRow label="Exposure" value={pp.toneMappingExposure} min={0} max={4} step={0.01} onChange={(v) => setPP({ toneMappingExposure: v })} />
       </ToggleSection>
     </>
   );
 }
 
-// ─── Text material section (우측 패널, text 탭 한정) ────────────────────────
+// ─── Text material section ────────────────────────────────────────────────────
 
 const TEXT_MATERIAL_TYPES = [
   { key: "standard", label: "Standard", desc: "PBR" },
@@ -328,7 +266,7 @@ function TextMaterialSection() {
       <Divider />
 
       <SectionLabel label="Material" />
-      <div className="px-4 pb-3">
+      <div className="px-4 pb-4">
         <div className="grid grid-cols-2 gap-1.5">
           {TEXT_MATERIAL_TYPES.map(({ key, label, desc }) => (
             <button
@@ -340,11 +278,7 @@ function TextMaterialSection() {
                   : "bg-white/[0.04] border border-white/[0.06] hover:bg-white/[0.08]"
               }`}
             >
-              <span
-                className={`text-[12px] font-semibold ${
-                  text.materialType === key ? "text-blue-300" : "text-slate-300"
-                }`}
-              >
+              <span className={`text-[12px] font-semibold ${text.materialType === key ? "text-blue-300" : "text-slate-300"}`}>
                 {label}
               </span>
               <span className="text-[10px] text-slate-600 mt-0.5">{desc}</span>
@@ -355,65 +289,27 @@ function TextMaterialSection() {
 
       <Divider />
       <SectionLabel label="Color" />
-      <ColorRow
-        label="Base Color"
-        value={text.color}
-        onChange={(v) => setText({ color: v })}
-      />
-      {(text.materialType === "neon" ||
-        text.materialType === "holographic" ||
-        text.materialType === "standard") && (
-        <ColorRow
-          label="Emissive"
-          value={text.emissiveColor}
-          onChange={(v) => setText({ emissiveColor: v })}
-        />
+      <ColorRow label="Base Color" value={text.color} onChange={(v) => setText({ color: v })} />
+      {(text.materialType === "neon" || text.materialType === "holographic" || text.materialType === "standard") && (
+        <ColorRow label="Emissive" value={text.emissiveColor} onChange={(v) => setText({ emissiveColor: v })} />
       )}
       {(text.materialType === "neon" || text.materialType === "standard") && (
-        <SliderRow
-          label="Emissive Intensity"
-          value={text.emissiveIntensity}
-          min={0}
-          max={5}
-          step={0.05}
-          onChange={(v) => setText({ emissiveIntensity: v })}
-        />
+        <SliderRow label="Emissive Intensity" value={text.emissiveIntensity} min={0} max={5} step={0.05} onChange={(v) => setText({ emissiveIntensity: v })} />
       )}
 
       {(text.materialType === "standard" || text.materialType === "metallic") && (
         <>
           <Divider />
           <SectionLabel label="PBR" />
-          <SliderRow
-            label="Metalness"
-            value={text.metalness}
-            min={0}
-            max={1}
-            step={0.01}
-            onChange={(v) => setText({ metalness: v })}
-          />
-          <SliderRow
-            label="Roughness"
-            value={text.roughness}
-            min={0}
-            max={1}
-            step={0.01}
-            onChange={(v) => setText({ roughness: v })}
-          />
+          <SliderRow label="Metalness" value={text.metalness} min={0} max={1} step={0.01} onChange={(v) => setText({ metalness: v })} />
+          <SliderRow label="Roughness" value={text.roughness} min={0} max={1} step={0.01} onChange={(v) => setText({ roughness: v })} />
         </>
       )}
 
       {text.materialType !== "glass" && (
         <>
           <Divider />
-          <SliderRow
-            label="Opacity"
-            value={text.opacity}
-            min={0}
-            max={1}
-            step={0.01}
-            onChange={(v) => setText({ opacity: v })}
-          />
+          <SliderRow label="Opacity" value={text.opacity} min={0} max={1} step={0.01} onChange={(v) => setText({ opacity: v })} />
         </>
       )}
 
@@ -425,12 +321,7 @@ function TextMaterialSection() {
       <SliderRow label="Position Y" value={text.positionY} min={-5} max={5} step={0.05} onChange={(v) => setText({ positionY: v })} />
 
       <Divider />
-      <ToggleSection
-        id="bevel"
-        label="Bevel"
-        checked={text.bevelEnabled}
-        onCheckedChange={(v) => setText({ bevelEnabled: v })}
-      >
+      <ToggleSection id="bevel" label="Bevel" checked={text.bevelEnabled} onCheckedChange={(v) => setText({ bevelEnabled: v })}>
         <SliderRow label="Thickness" value={text.bevelThickness} min={0} max={0.2} step={0.002} onChange={(v) => setText({ bevelThickness: v })} />
         <SliderRow label="Size" value={text.bevelSize} min={0} max={0.1} step={0.001} onChange={(v) => setText({ bevelSize: v })} />
       </ToggleSection>
@@ -447,12 +338,13 @@ export default function RightPanel() {
 
   return (
     <div className="pointer-events-auto flex flex-col h-full w-[240px] rounded-2xl overflow-hidden bg-[#0e1117]/92 backdrop-blur-xl border border-white/[0.07] shadow-2xl shadow-black/60">
-      <div className="flex-1 overflow-y-auto scrollbar-hide pb-2">
-        {activePanel === "text" && <TextMaterialSection />}
-        <LightingSection />
-        <Divider />
-        <PostProcessingSection />
-        <div className="h-4" />
+      <div className="flex-1 overflow-y-auto scrollbar-hide">
+        <div className="pt-2 pb-6">
+          {activePanel === "text" && <TextMaterialSection />}
+          <LightingSection />
+          <Divider />
+          <PostProcessingSection />
+        </div>
       </div>
     </div>
   );
